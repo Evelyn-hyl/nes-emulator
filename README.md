@@ -149,3 +149,11 @@ Requires SDL2 development libraries installed (`libsdl2-dev` on Debian/Ubuntu,
   CPU opcode tables, PPU register behavior, and the iNES format)
 - `nestest.nes` and its reference log (widely mirrored on GitHub)
 - blargg's NES test ROM collections (search "blargg nes tests" on GitHub)
+
+## Commit format
+
+`<type>(<scope>): <summary>` — types: `feat`, `fix`, `refactor`, `perf`, `test`,
+`docs`, `build`, `chore`. Scopes: `cpu`, `ppu`, `apu`, `disassembler`, `mapper`,
+`nes`, `util`, `build`.
+
+Example: `feat(cpu): implement ADC/SBC with overflow flag handling`
