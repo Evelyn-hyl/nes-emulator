@@ -6,8 +6,8 @@
 
 class NES {
   private:
-    CPU cpu;
-  
+    CPU cpu();
+
 };
 
 #endif
