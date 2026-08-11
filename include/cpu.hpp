@@ -58,21 +58,15 @@ public:
 
   unsigned char extract(unsigned char data, unsigned char mask,
                         unsigned char shift = 0);
-
   /*
     Turns on selected flag in the status register (sr)
   */
-
   void set_flag(FlagKind kind, bool active);
   /*
     Checks if flag in the status register (sr) is active
   */
-
   bool is_active_flag(FlagKind kind);
-
-  
   void helper_adc(unsigned short memory);
-
 private:
   std::vector<unsigned char> memory;
   Registers registers;
