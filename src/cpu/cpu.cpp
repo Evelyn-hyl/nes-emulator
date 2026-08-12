@@ -1,8 +1,13 @@
 #include "../../include/cpu.hpp"
+#include <iostream>
+CPU::CPU(Bus *bus) {
+  if (bus ==nullptr) {
+    std::cerr << "[Error] Pointer to Bus is Null!" << std::endl;
+    exit(1);
+  }
 
-CPU::CPU() {
-  // Naive implementation, just pre allocate 2^16 of space
-  this->memory = std::vector<char unsigned>(65536);
+
+  this->bus = bus;
 };
 
 unsigned char CPU::extract(unsigned char data, unsigned char mask, unsigned char shift) {
@@ -115,51 +120,51 @@ void CPU::helper_adc(unsigned short memory) {
 }
 
 void CPU::execute() {
-  unsigned char op = this->memory.at(this->registers.ip);
+  unsigned char op = this->bus->read(this->registers.ip);
   this->registers.ip += 1;
 
   switch (op) {
     // ADC - Add With Carry Immediate
     case 0x69: {
-      this->helper_adc(this->memory.at(this->registers.ip));
+      this->helper_adc(this->bus->read(this->registers.ip));
       this->registers.ip += 1;
       break;
     };
     // ADC - Add With Carry Zero Page
     case 0x65: {
-      unsigned char zero_page_addr = this->memory.at(this->registers.ip);
+      unsigned char zero_page_addr = this->bus->read(this->registers.ip);
       this->registers.ip += 1;
-      this->helper_adc(this->memory.at(zero_page_addr % 256));
+      this->helper_adc(this->bus->read(zero_page_addr % 256));
       break;
     };
 
       // ADC - Add With Carry Zero Page X
 
     case 0x75: {
-      unsigned char zero_page_addr = this->memory.at(this->registers.ip);
+      unsigned char zero_page_addr = this->bus->read(this->registers.ip);
       this->registers.ip += 1;
-      this->helper_adc(this->memory.at((zero_page_addr + this->registers.x) % 256));
+      this->helper_adc(this->bus->read((zero_page_addr + this->registers.x) % 256));
       break;
     };
     // ADC - Add With Carry Absolute
     // Fetches 16 bit address and loads. High is first, Low is Second
     case 0x6D: {
-      unsigned char low = this->memory.at(this->registers.ip);
-      unsigned char high = this->memory.at(this->registers.ip + 1);
+      unsigned char low = this->bus->read(this->registers.ip);
+      unsigned char high = this->bus->read(this->registers.ip + 1);
       // Shift the high bits by 8. Then comapre the hangiong low 8 bits, to the low bits retreived from memory.
       unsigned short double_byte_addr = (high << 8) | low;
-      this->helper_adc(this->memory.at(double_byte_addr));
+      this->helper_adc(this->bus->read(double_byte_addr));
       this->registers.ip += 2;
       break;
     };
       // ADC - Add With Carry Absolute X
 
     case 0x7D: {
-      unsigned char low = this->memory.at(this->registers.ip);
-      unsigned char high = this->memory.at(this->registers.ip + 1);
+      unsigned char low = this->bus->read(this->registers.ip);
+      unsigned char high = this->bus->read(this->registers.ip + 1);
       // Shift the high bits by 8. Then comapre the hangiong low 8 bits, to the low bits retreived from memory.
       unsigned short double_byte_addr = (high << 8) | low;
-      this->helper_adc(this->memory.at(double_byte_addr + this->registers.x));
+      this->helper_adc(this->bus->read(double_byte_addr + this->registers.x));
       this->registers.ip += 2;
       break;
     };
@@ -167,33 +172,33 @@ void CPU::execute() {
       // ADC - Add With Carry Absolute Y
 
     case 0x79: {
-      unsigned char low = this->memory.at(this->registers.ip);
-      unsigned char high = this->memory.at(this->registers.ip + 1);
+      unsigned char low = this->bus->read(this->registers.ip);
+      unsigned char high = this->bus->read(this->registers.ip + 1);
       // Shift the high bits by 8. Then comapre the hangiong low 8 bits, to the low bits retreived from memory.
       unsigned short double_byte_addr = (high << 8) | low;
-      this->helper_adc(this->memory.at(double_byte_addr + this->registers.y));
+      this->helper_adc(this->bus->read(double_byte_addr + this->registers.y));
       this->registers.ip += 2;
       break;
     };
     // ADC - Add With Carry Indexed Indirect X (d,x)
     case 0x61: {
-      unsigned char arg = (this->memory.at(this->registers.ip) + this->registers.x) % 256;
+      unsigned char arg = (this->bus->read(this->registers.ip) + this->registers.x) % 256;
       this->registers.ip += 1;
-      unsigned char low = this->memory.at(arg);
-      unsigned char high = this->memory.at((arg + 1) % 256);
+      unsigned char low = this->bus->read(arg);
+      unsigned char high = this->bus->read((arg + 1) % 256);
       unsigned short double_byte_addr = (high << 8) | low;
-      this->helper_adc(this->memory.at(double_byte_addr));
+      this->helper_adc(this->bus->read(double_byte_addr));
       break;
     };
 
     // ADC - Add with Carry Indirect Indexed Y (d),y
     case 0x71: {
-      unsigned char arg = this->memory.at(this->registers.ip);
+      unsigned char arg = this->bus->read(this->registers.ip);
       this->registers.ip += 1;
-      unsigned char low = this->memory.at(arg);
-      unsigned char high = this->memory.at((arg + 1) % 256);
+      unsigned char low = this->bus->read(arg);
+      unsigned char high = this->bus->read((arg + 1) % 256);
       unsigned short double_byte_addr = ((high << 8) | low) + this->registers.y;
-      this->helper_adc(this->memory.at(double_byte_addr));
+      this->helper_adc(this->bus->read(double_byte_addr));
       break;
     };
     // SC - Set Carry

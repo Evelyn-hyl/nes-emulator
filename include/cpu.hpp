@@ -1,7 +1,7 @@
 #ifndef NES_CPU_HPP
 #define NES_CPU_HPP
 
-#include <vector>
+#include "./bus.hpp"
 
 struct Registers {
   // 16 bit program counter or instruction pointer
@@ -53,7 +53,8 @@ enum FlagKind {
 
 class CPU {
 public:
-  CPU();
+  CPU() = default;
+  CPU(Bus *bus);
   void execute();
 
   unsigned char extract(unsigned char data, unsigned char mask,
@@ -68,8 +69,8 @@ public:
   bool is_active_flag(FlagKind kind);
   void helper_adc(unsigned short memory);
 private:
-  std::vector<unsigned char> memory;
   Registers registers;
+  Bus *bus;
 };
 
 #endif
