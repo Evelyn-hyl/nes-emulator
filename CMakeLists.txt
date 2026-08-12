@@ -42,6 +42,7 @@ else()
 endif()
 
 set(CORE_SOURCES
+    src/cartridge/cartridge.cpp
     # List backend cpp relative file paths here
 )
 
