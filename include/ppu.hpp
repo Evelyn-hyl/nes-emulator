@@ -9,6 +9,10 @@ class PPU {
     PPU() = default;
     ~PPU() = default;
 
+
+  void set_cartdridge(Cartridge *cartdridge) { this->cartridge_ = cartdridge;};
+        
+    
     uint8_t cpu_read(uint16_t addr);
     void cpu_write(uint16_t addr, uint8_t data);
     

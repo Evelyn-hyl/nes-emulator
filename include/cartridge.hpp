@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-
+#include "mapper.hpp"
 class Cartridge {
     public:
     explicit Cartridge(const std::string& filename);
@@ -13,7 +13,7 @@ class Cartridge {
     size_t get_chr_size() const { return chr_rom_.size(); };
 
     uint8_t ppu_read(uint16_t addr) const;
-
+    uint8_t cpu_read(uint16_t addr) const;
     enum MirrorMode {
         VERTICAL,
         HORIZONTAL
@@ -32,7 +32,7 @@ class Cartridge {
     bool valid_{};
     uint8_t mapper_id_{};
     MirrorMode mirror_mode_{};
-
+    Mapper *mapper_;
     std::vector<uint8_t> prg_rom_;
     std::vector<uint8_t> chr_rom_;
 };

@@ -5,8 +5,8 @@ uint8_t PPU::cpu_read(uint16_t addr) {
     uint8_t result = 0;
 
     switch(addr & 0x0007) {
-        case 0x0002: // $2002 PPUSTATUS
-            result = (ppu_status_.reg & 0xE0) | (open_bus_ & 0x1F);
+        case 0x0002: {// $2002 PPUSTATUS
+            uint8_t status = (ppu_status_.reg & 0xE0) | (ppu_status_.open_bus_data & 0x1F);
 
             ppu_status_.vblank = 0;
             w_ = false;
@@ -24,7 +24,7 @@ uint8_t PPU::cpu_read(uint16_t addr) {
 
     return open_bus_;
 }
-
+ 
 void PPU::cpu_write(uint16_t addr, uint8_t data) {
     open_bus_ = data;
 
