@@ -1,5 +1,4 @@
-#ifndef NES_PPU_HPP
-#define NES_PPU_HPP
+#pragma once
 #include <array>
 #include <cstdint>
 
@@ -29,7 +28,7 @@ class PPU {
     std::array<uint8_t, 32> palette_ram_{};
     std::array<uint8_t, 256> oam_{};
     Cartridge* cartridge_ = nullptr;    // Access to CHR-ROM for Pattern Tables
-    
+
     // Bitfields for $2000, $2001, $2002, $v, $t
     union PPUCTRL {
         uint8_t reg;
@@ -65,7 +64,7 @@ class PPU {
         uint8_t reg;
 
         struct {
-            uint8_t open_bus_data    : 5;
+            uint8_t padding          : 5;
             uint8_t sprite_overflow  : 1;
             uint8_t sprite_0_hit     : 1;
             uint8_t vblank           : 1;
@@ -90,14 +89,16 @@ class PPU {
     PPUSTATUS ppu_status_{};  // $2002
     uint8_t oam_addr_{};      // $2003
 
-    // Internal Read Buffer
+    // Internal Buffers
     uint8_t ppu_read_buffer_{};
+    uint8_t open_bus_{};
 
     // Scroll & Address Pointers ($2005 - $2006)
-    LoopyRegister v_;       // vram address pointer
-    LoopyRegister t_;       // temp vram address pointer
-    uint16_t fine_x_;       // horizontal pixel offset
-    bool w_;                // write latch
-};
+    LoopyRegister v_{};       // vram address pointer
+    LoopyRegister t_{};       // temp vram address pointer
+    uint16_t fine_x_{};       // horizontal pixel offset
+    bool w_{};                // write latch
 
-#endif
+    // Helpers
+    uint16_t map_vram_addr(uint16_t addr) const;
+};
