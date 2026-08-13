@@ -2,29 +2,29 @@
 #define NES_CPU_HPP
 
 #include "./bus.hpp"
-
+#include "./cartridge.hpp"
 struct Registers {
-  // 16 bit program counter or instruction pointer
-  unsigned short ip;
-  // 256 byte stack pointer register
-  unsigned char sp;
-  // 8 bit status register (Only 6 bits are used)
-  unsigned char sr;
-  // 8 bit wide accumulator
-  unsigned char a;
-  // 8 bit index X
-  unsigned char x;
-  // 8 bit index Y
-  unsigned char y;
+    // 16 bit program counter or instruction pointer
+    unsigned short ip;
+    // 256 byte stack pointer register
+    unsigned char sp;
+    // 8 bit status register (Only 6 bits are used)
+    unsigned char sr;
+    // 8 bit wide accumulator
+    unsigned char a;
+    // 8 bit index X
+    unsigned char x;
+    // 8 bit index Y
+    unsigned char y;
 
-  Registers() {
-    this->a = 0;
-    this->x = 0;
-    this->y = 0;
-    this->ip = 0;
-    this->sr = 0;
-    this->sp = 0xFF;
-  }
+    Registers() {
+      this->a = 0;
+      this->x = 0;
+      this->y = 0;
+      this->ip = 0;
+      this->sr = 0;
+      this->sp = 0xFF;
+    }
 };
 
 enum FlagKind {
@@ -52,25 +52,31 @@ enum FlagKind {
 };
 
 class CPU {
-public:
-  CPU() = default;
-  CPU(Bus *bus);
-  void execute();
+  public:
+    CPU();
+    void execute();
 
-  unsigned char extract(unsigned char data, unsigned char mask,
-                        unsigned char shift = 0);
-  /*
-    Turns on selected flag in the status register (sr)
-  */
-  void set_flag(FlagKind kind, bool active);
-  /*
-    Checks if flag in the status register (sr) is active
-  */
-  bool is_active_flag(FlagKind kind);
-  void helper_adc(unsigned short memory);
-private:
-  Registers registers;
-  Bus *bus;
+    unsigned char extract(unsigned char data, unsigned char mask, unsigned char shift = 0) const;
+    /*
+      Turns on selected flag in the status register (sr)
+    */
+    void set_flag(FlagKind kind, bool active);
+    /*
+      Checks if flag in the status register (sr) is active
+    */
+    bool is_active_flag(FlagKind kind);
+    void helper_adc(unsigned short memory);
+    unsigned char cpu_read(unsigned short address) const;
+    void set_cartdridge(Cartridge *cartdridge) {
+      this->cartridge_ = cartdridge;
+    };
+
+  private:
+    Cartridge *cartridge_ = nullptr; // Access to PRG-ROM
+    // 2KB onboard memory from [0x0000, 0x07FF]
+    std::vector<unsigned char> memory;
+    Registers registers;
+    Bus *bus;
 };
 
 #endif

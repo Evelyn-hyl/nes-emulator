@@ -8,10 +8,10 @@ class NES {
   private:
     Bus bus;
     CPU cpu;
-      PPU ppu;
+    PPU ppu;
   public:
     NES(){
-       this->cpu = CPU(&this->bus); 
+      this->bus.hook(&this->ppu, &this->cpu);
     }
 };
 

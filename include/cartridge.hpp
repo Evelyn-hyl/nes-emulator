@@ -13,7 +13,7 @@ class Cartridge {
     size_t get_chr_size() const { return chr_rom_.size(); };
 
     uint8_t ppu_read(uint16_t addr) const;
-
+    uint8_t cpu_read(uint16_t addr) const;
     enum MirrorMode {
         VERTICAL,
         HORIZONTAL

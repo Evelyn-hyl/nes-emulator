@@ -1,21 +1,22 @@
 #ifndef NES_BUS_HPP
 #define NES_BUS_HPP
 
-#include <vector>
+#include "cartridge.hpp"
+#include <cstdint>
 
+
+class PPU;
+class CPU;
+class Cartridge;
 class Bus {
-  private:
-    // CPU has 2KB (2 * 1024) of onboard memory, everything else is managed by mapper and bus. Since memory must be accessed
-    // by other components We will leave all on the bus.
-    std::vector<unsigned char> cpu_memory = std::vector<char unsigned>(2 * 1024u);
-    ;
-
-  public:
-    enum ReadKind {
-      CPU,
-      PPU
-    };
-    unsigned char read(unsigned short address, ReadKind kind = Bus::ReadKind::CPU);
+	private:
+		PPU *ppu_ = nullptr;
+		CPU *cpu_ = nullptr;
+		Cartridge *cartdridge_ = nullptr;
+	public:
+		void hook(Cartridge *cartdridge, PPU *ppu, CPU *cpu);
+		uint8_t cpu_read_ppu(uint16_t addr);
+		void cpu_write_ppu(uint16_t addr, uint8_t data);
 };
 
 #endif

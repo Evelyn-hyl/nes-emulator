@@ -1,4 +1,4 @@
-#include "cartridge.hpp"
+#include "../../include/cartridge.hpp"
 #include <fstream>
 #include <iostream>
 
@@ -6,6 +6,25 @@ namespace {
     constexpr size_t prg_rom_chunk_size = 16384;
     constexpr size_t chr_rom_chunk_size = 8192;
 }
+
+uint8_t Cartridge::cpu_read(uint16_t address) const {
+
+    // prg_rom [0x8000, 0xFFFF]
+    if (address < 0x8000) {
+        std::cerr << "[ERROR] Performed read on address outside of prg_rom range!" << std::endl;
+        return 0;
+    };
+    
+    return this->prg_rom_.at(address);
+};
+
+uint8_t Cartridge::ppu_read(uint16_t addr) const {
+    if (addr > 0x1FFF) {
+      std::cerr << "[ERROR] Performed read on address outside of chr_rom range!" << std::endl;  
+    };
+
+    return this->chr_rom_.at(addr);
+};
 
 Cartridge::Cartridge(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
@@ -40,7 +59,3 @@ Cartridge::Cartridge(const std::string& filename) {
 
     valid_ = true;
 }
-
-// uint8_t Cartridge::ppu_read(uint16_t addr) {
-    // [TODO]
-// }
