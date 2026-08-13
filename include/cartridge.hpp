@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-
+#include "mapper.hpp"
 class Cartridge {
     public:
     explicit Cartridge(const std::string& filename);
@@ -32,7 +32,7 @@ class Cartridge {
     bool valid_{};
     uint8_t mapper_id_{};
     MirrorMode mirror_mode_{};
-
+    Mapper *mapper_;
     std::vector<uint8_t> prg_rom_;
     std::vector<uint8_t> chr_rom_;
 };
