@@ -43,7 +43,9 @@ endif()
 
 set(CORE_SOURCES
     src/cartridge/cartridge.cpp
+    src/cartridge/mapper.cpp
     src/ui/frame_limiter.cpp
+    src/ppu/ppu.cpp
     # List backend cpp relative file paths here
 )
 

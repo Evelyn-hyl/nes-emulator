@@ -9,15 +9,18 @@ class PPU {
     PPU() = default;
     ~PPU() = default;
 
+    static constexpr int NES_WIDTH = 256;
+    static constexpr int NES_HEIGHT = 240;
 
-  void set_cartdridge(Cartridge *cartdridge) { this->cartridge_ = cartdridge;};
+    void set_cartdridge(Cartridge *cartdridge) { this->cartridge_ = cartdridge;};
         
-    
     uint8_t cpu_read(uint16_t addr);
     void cpu_write(uint16_t addr, uint8_t data);
     
     uint8_t ppu_read(uint16_t addr);
     void ppu_write(uint16_t addr, uint8_t data);
+
+    void render_pattern_table(int bank, uint32_t* output_pixel_buffer);
 
     void clock();
     void reset();
