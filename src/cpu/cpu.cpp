@@ -1,5 +1,12 @@
 #include "../../include/cpu.hpp"
 
+// NOTE In the future it can definitely be possible to
+// drop the file size down, as I could probably re use the addressing logic
+// with instruction logic.
+// For example: Zero Page addressing works the same regardless of where its used
+// So we could aim to just re use this core addressing logic, and call it when
+// needed. WARNING NOT RIGHT NOW THOUGH AS I WANT TO FOCUS ON GETTING SOMETHING
+// FUNCTIONAL BEFORE TIDYING THINGS
 CPU::CPU() { this->memory = std::vector<unsigned char>(1024 * 2); };
 
 unsigned char CPU::cpu_read(unsigned short address) const {
@@ -415,6 +422,411 @@ void CPU::execute() {
     };
     break;
   };
+
+    // BTT - Bit Test Zero Page
+
+  case 0x24: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    unsigned char memory = this->cpu_read(zero_page_addr);
+    unsigned char result = this->registers.a & memory;
+    this->registers.ip += 1;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::V, (memory & 0x40));
+    this->set_flag(FlagKind::N, (memory & 0x80));
+    break;
+  };
+
+    // BTT - Bit Test Absolute
+
+  case 0x2C: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a & memory;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::V, (memory & 0x40));
+    this->set_flag(FlagKind::N, (memory & 0x80));
+    break;
+  };
+  // CMP - Compare A Immediate
+  case 0xC9: {
+    unsigned char memory = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
+
+    // CMP - Compare A Zero Page
+
+  case 0xC5: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char memory = this->cpu_read(zero_page_addr);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CMP - Compare A Zero Page X
+
+  case 0xD5: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char memory =
+        this->cpu_read((zero_page_addr + this->registers.x) % 256);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+  // CMP - Compare A Absolute
+  case 0xCD: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CMP - Compare A Absolute X
+
+  case 0xDD: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr + this->registers.x);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CMP - Compare A Absolute Y
+
+  case 0xD9: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr + this->registers.y);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CMP - Compare A (Indirect, X)
+
+  case 0xC1: {
+    unsigned char arg =
+        (this->cpu_read(this->registers.ip) + this->registers.x) % 256;
+    this->registers.ip += 1;
+    unsigned char low = this->cpu_read(arg);
+    unsigned char high = this->cpu_read((arg + 1) % 256);
+    unsigned short double_byte_addr = (high << 8) | low;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
+    // CMP - Compare A (Indirect),Y
+
+  case 0xD1: {
+    unsigned char arg = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char low = this->cpu_read(arg);
+    unsigned char high = this->cpu_read((arg + 1) % 256);
+    unsigned short double_byte_addr = ((high << 8) | low) + this->registers.y;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a - memory;
+    this->set_flag(FlagKind::C, this->registers.a >= memory);
+    this->set_flag(FlagKind::Z, this->registers.a == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CPX - Compare X Immediate
+
+  case 0xE0: {
+    unsigned char memory = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char result = this->registers.x - memory;
+    this->set_flag(FlagKind::C, this->registers.x >= memory);
+    this->set_flag(FlagKind::Z, this->registers.x == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CPX - Compare X Zero Page
+
+  case 0xE4: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char memory = this->cpu_read(zero_page_addr);
+    unsigned char result = this->registers.x - memory;
+    this->set_flag(FlagKind::C, this->registers.x >= memory);
+    this->set_flag(FlagKind::Z, this->registers.x == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CPX - Compare X Absolute
+
+  case 0xEC: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.x - memory;
+    this->set_flag(FlagKind::C, this->registers.x >= memory);
+    this->set_flag(FlagKind::Z, this->registers.x == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CPY - Compare Y Immediate
+
+  case 0xC0: {
+    unsigned char memory = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char result = this->registers.y - memory;
+    this->set_flag(FlagKind::C, this->registers.y >= memory);
+    this->set_flag(FlagKind::Z, this->registers.y == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+    // CPY - Compare Y Zero Page
+
+  case 0xC4: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char memory = this->cpu_read(zero_page_addr);
+    unsigned char result = this->registers.y - memory;
+    this->set_flag(FlagKind::C, this->registers.y >= memory);
+    this->set_flag(FlagKind::Z, this->registers.y == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // CPY - Compare Y Absolute
+
+  case 0xCC: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.y - memory;
+    this->set_flag(FlagKind::C, this->registers.y >= memory);
+    this->set_flag(FlagKind::Z, this->registers.y == memory);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+  // DEC - Decrement Memory Zero Page
+  case 0xC6: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    unsigned char memory = this->cpu_read(zero_page_addr);
+    unsigned char result = memory - 1;
+    this->memory.at(zero_page_addr) = result;
+    this->registers.ip += 1;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // DEC - Decrement Memory Zero Page X
+
+  case 0xD6: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    unsigned char memory =
+        this->cpu_read((zero_page_addr + this->registers.x) % 256);
+    unsigned char result = memory - 1;
+    this->memory.at((zero_page_addr + this->registers.x) % 256) = result;
+    this->registers.ip += 1;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // DEC - Decrement Memory Absolute
+
+  case 0xCE: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = memory - 1;
+    this->memory.at(double_byte_addr) = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+    // DEC - Decrement Memory Absolute X
+
+  case 0xDE: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr + this->registers.x);
+    unsigned char result = memory - 1;
+    this->memory.at(double_byte_addr + this->registers.x) = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
+
+  // DEX - Decrement X Implied
+  case 0xCA: {
+    unsigned char result = this->registers.x - 1;
+    this->registers.x = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+  // DEY - Decrement X Implied
+  case 0x88: {
+    unsigned char result = this->registers.y - 1;
+    this->registers.y = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // EOR - Bitwise Exclusive OR Immediate
+
+  case 0x49: {
+    unsigned char memory = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // EOR - Bitwise Exclusive OR Zero Page
+
+  case 0x45: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char memory = this->cpu_read(zero_page_addr);
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
+
+    // EOR - Bitwise Exclusive OR Zero Page X
+
+  case 0x55: {
+    unsigned char zero_page_addr = this->cpu_read(this->registers.ip);
+    unsigned char memory =
+        this->cpu_read((zero_page_addr + this->registers.x) % 256);
+    this->registers.ip += 1;
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+    // EOR - Bitwise Exclusive OR Absolute
+
+  case 0x4D: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
+    // EOR - Bitwise Exclusive OR Absolute X
+
+  case 0x5D: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr + this->registers.x);
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+
+    // EOR - Bitwise Exclusive OR Absolute Y
+
+  case 0x59: {
+    unsigned char low = this->cpu_read(this->registers.ip);
+    unsigned char high = this->cpu_read(this->registers.ip + 1);
+    unsigned short double_byte_addr = (high << 8) | low;
+    this->registers.ip += 2;
+    unsigned char memory = this->cpu_read(double_byte_addr + this->registers.y);
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  };
+    // EOR - Bitwise Exclusive OR (Indirect, X)
+
+  case 0x41: {
+    unsigned char arg =
+        (this->cpu_read(this->registers.ip) + this->registers.x) % 256;
+    this->registers.ip += 1;
+    unsigned char low = this->cpu_read(arg);
+    unsigned char high = this->cpu_read((arg + 1) % 256);
+    unsigned short double_byte_addr = (high << 8) | low;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
+    // EOR - Bitwise Exclusive OR (Indirect),Y
+
+  case 0x51: {
+    unsigned char arg = this->cpu_read(this->registers.ip);
+    this->registers.ip += 1;
+    unsigned char low = this->cpu_read(arg);
+    unsigned char high = this->cpu_read((arg + 1) % 256);
+    unsigned short double_byte_addr = ((high << 8) | low) + this->registers.y;
+    unsigned char memory = this->cpu_read(double_byte_addr);
+    unsigned char result = this->registers.a ^ memory;
+    this->registers.a = result;
+    this->set_flag(FlagKind::Z, result == 0);
+    this->set_flag(FlagKind::N, (result & 0x80));
+    break;
+  }
 
   // SC - Set Carry
   case 0x38: {
