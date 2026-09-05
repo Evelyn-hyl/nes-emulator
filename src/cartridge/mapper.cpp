@@ -30,9 +30,9 @@ bool MapperZero::ppu_map_read(uint16_t addr, uint32_t &mapped_addr) {
 };
 
 bool MapperZero::ppu_map_write(uint16_t addr, uint32_t &mapped_addr) {
-  if (addr > 0x1FFF) {
+  if (addr > 0x1FFF || chr_banks_ != 0) {
     return false;
   };
   mapped_addr = addr;
-  return true; // only meaningful if chrBanks_ == 0 (CHR-RAM)
+  return true;
 };
