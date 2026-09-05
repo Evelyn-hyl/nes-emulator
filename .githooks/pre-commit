@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+# Auto-formats staged C/C++ files with clang-format before each commit.
+
+CLANG_FORMAT=$(command -v clang-format || true)
+
+if [ -z "$CLANG_FORMAT" ]; then
+    echo "warning: clang-format not found on PATH - skipping auto-format." >&2
+    exit 0
+fi
+
+FILES=$(git diff --cached --name-only --diff-filter=ACMR -- '*.cpp' '*.hpp' '*.h' '*.cc' '*.cxx')
+
+if [ -z "$FILES" ]; then
+    exit 0
+fi
+
+echo "$FILES" | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    "$CLANG_FORMAT" -i "$file"
+    git add "$file"
+done

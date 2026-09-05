@@ -12,6 +12,18 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Point git at the repo's tracked hooks (enables the pre-commit auto-formatter)
+# for anyone who configures this project, without requiring a manual setup step.
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} config core.hooksPath .githooks
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+endif()
+
 include(FetchContent)
 
 # Dependencies
