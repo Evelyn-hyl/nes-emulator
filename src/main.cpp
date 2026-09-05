@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
     Cartridge cart(rom_path);
     PPU ppu;
 
-    ppu.set_cartdridge(&cart);
+    ppu.set_cartridge(&cart);
 
     if (!cart.is_valid()) {
         std::cerr << "Cartridge loading failed." << "\n";
