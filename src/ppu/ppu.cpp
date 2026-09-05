@@ -3,7 +3,7 @@
 uint8_t PPU::cpu_read(uint16_t addr) {
     uint8_t result = 0;
 
-    switch(addr & 0x0007) {
+    switch (addr & 0x0007) {
         case 0x0002: { // $2002 PPUSTATUS
             result = (ppu_status_.reg & 0xE0) | (open_bus_ & 0x1F);
 
@@ -23,10 +23,9 @@ uint8_t PPU::cpu_read(uint16_t addr) {
         }
         case 0x0007: { // $2007 PPUDATA (VRAM Read)
             result = ppu_read_buffer_;
-            
+
             // Fresh vram address read
             ppu_read_buffer_ = ppu_read(v_.reg);
-
 
             if (ppu_read_buffer_ >= 0x3F00) {
                 result = ppu_read_buffer_;
@@ -43,11 +42,11 @@ uint8_t PPU::cpu_read(uint16_t addr) {
 
     return open_bus_;
 }
- 
+
 void PPU::cpu_write(uint16_t addr, uint8_t data) {
     open_bus_ = data;
 
-    switch(addr & 0x0007) {
+    switch (addr & 0x0007) {
         case 0x0000: // $2000 PPUCTRL
             ppu_ctrl_.reg = data;
             t_.nametable = data & 0x03;
@@ -65,24 +64,24 @@ void PPU::cpu_write(uint16_t addr, uint8_t data) {
             oam_[oam_addr_] = data;
             oam_addr_++;
             break;
-        
-        case 0x0005: // $2005 PPUSCROLL
-            if (!w_) {   // First write: w == 0
+
+        case 0x0005:   // $2005 PPUSCROLL
+            if (!w_) { // First write: w == 0
                 fine_x_ = data & 0x07;
                 t_.coarse_x = data >> 3;
-            } else {    // Second write: w == 1
+            } else { // Second write: w == 1
                 t_.fine_y = data & 0x07;
                 t_.coarse_y = data >> 3;
             }
 
             w_ = !w_;
             break;
-        
-        case 0x0006: // $2006 PPUADDR
-            if (!w_) {   // First write: w == 0
+
+        case 0x0006:   // $2006 PPUADDR
+            if (!w_) { // First write: w == 0
                 t_.reg = t_.reg & 0x00FF | ((data & 0x3F) << 8);
-            } else {    // Second write: w == 1
-                t_.reg = t_.reg & 0xFF00 | data;    // Intentionally overwrites lower 8 bits
+            } else {                             // Second write: w == 1
+                t_.reg = t_.reg & 0xFF00 | data; // Intentionally overwrites lower 8 bits
                 v_.reg = t_.reg;
             }
 
@@ -127,12 +126,12 @@ void PPU::ppu_write(uint16_t addr, uint8_t data) {
     // $0000-$1FFF: CHR-RAM
     if (addr <= 0x1FFF) {
         cartridge_->ppu_write(addr, data);
-    } 
+    }
     // $2000-$3EFF: Internal VRAM
     else if (addr <= 0x3EFF) {
         uint16_t vram_index = map_vram_addr(addr, cartridge_->get_mirror_mode());
         vram_[vram_index] = data;
-    } 
+    }
     // $3F00-$3FFF: Palette RAM
     else {
         // Mask mirroring addresses down to $3F00-$3F1F
@@ -156,11 +155,11 @@ void PPU::render_pattern_table(int bank, uint32_t* output_pixel_buffer) {
     constexpr int PATTERN_TABLE_TILES_PER_SIDE = 16;
     constexpr int TILE_PIXELS_PER_SIDE = 8;
     constexpr int PATTERN_TABLE_TOTAL_TILES = PATTERN_TABLE_TILES_PER_SIDE * PATTERN_TABLE_TILES_PER_SIDE;
-    constexpr int BITPLANE_SIZE_BYTES = TILE_PIXELS_PER_SIDE;  // one byte per row, one row per pixel-row
+    constexpr int BITPLANE_SIZE_BYTES = TILE_PIXELS_PER_SIDE; // one byte per row, one row per pixel-row
 
     // Divides pattern table by 16-byte tiles (256 tiles total)
     for (int tile_id = 0; tile_id < PATTERN_TABLE_TOTAL_TILES; tile_id++) {
-        
+
         uint16_t tile_offset = bank_offset + static_cast<uint16_t>(tile_id * 16);
 
         // Indicates which tile on the 16x16 pattern table grid
@@ -185,10 +184,16 @@ void PPU::render_pattern_table(int bank, uint32_t* output_pixel_buffer) {
                 int pixel_col = tile_col * 8 + col;
 
                 uint32_t color = 0xFF000000;
-                if (color_index == 1) { color = 0xFF555555; };
-                if (color_index == 2) { color = 0xFFAAAAAA; };
-                if (color_index == 3) { color = 0xFFFFFFFF; };
-                
+                if (color_index == 1) {
+                    color = 0xFF555555;
+                };
+                if (color_index == 2) {
+                    color = 0xFFAAAAAA;
+                };
+                if (color_index == 3) {
+                    color = 0xFFFFFFFF;
+                };
+
                 output_pixel_buffer[pixel_row * NES_WIDTH + pixel_col] = color;
             }
         }
@@ -201,7 +206,7 @@ uint16_t PPU::map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) co
         addr &= 0x2FFF;
     }
 
-    uint16_t offset = addr - 0x2000;     // Align with physical array addresses
+    uint16_t offset = addr - 0x2000; // Align with physical array addresses
 
     // Map address to nametables
     if (mirror_mode == Cartridge::MirrorMode::HORIZONTAL) {

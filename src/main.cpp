@@ -40,11 +40,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    SDL_Renderer* renderer = SDL_CreateRenderer(
-        window,
-        -1,
-        SDL_RENDERER_ACCELERATED
-    );
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     if (!renderer) {
         std::cerr << "Renderer creation failed: " << SDL_GetError() << "\n";
@@ -106,7 +102,7 @@ int main(int argc, char* argv[]) {
         SDL_RenderPresent(renderer);
 
         frame_limiter.end_frame();
-        
+
         frame_limiter.start_frame();
     };
 

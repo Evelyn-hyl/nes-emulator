@@ -26,7 +26,8 @@ uint8_t Cartridge::ppu_read(uint16_t addr) const {
         return chr_rom_[mapped];
     };
 
-    std::cerr << "[CARTRIDGE][PPU_READ ERROR] Performed read on address outside of chr_rom / chr_ram range!" << std::endl;
+    std::cerr << "[CARTRIDGE][PPU_READ ERROR] Performed read on address outside of chr_rom / chr_ram range!"
+              << std::endl;
 
     return 0x00;
 };
@@ -44,7 +45,7 @@ void Cartridge::ppu_write(uint16_t addr, uint8_t data) {
     return;
 }
 
-Cartridge::Cartridge(const std::string &filename) {
+Cartridge::Cartridge(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
@@ -53,7 +54,7 @@ Cartridge::Cartridge(const std::string &filename) {
     }
 
     iNESHeader header;
-    file.read(reinterpret_cast<char *>(&header), sizeof(iNESHeader));
+    file.read(reinterpret_cast<char*>(&header), sizeof(iNESHeader));
 
     if (header.name[0] != 'N' || header.name[1] != 'E' || header.name[2] != 'S' || header.name[3] != 0x1A) {
         std::cerr << "Invalid iNES header." << "\n";
@@ -65,12 +66,12 @@ Cartridge::Cartridge(const std::string &filename) {
     set_mirror_mode((header.mapper_id_low & 0x01) ? VERTICAL : HORIZONTAL);
 
     prg_rom_.resize(header.prg_rom_chunks * prg_rom_chunk_size);
-    file.read(reinterpret_cast<char *>(prg_rom_.data()), prg_rom_.size());
+    file.read(reinterpret_cast<char*>(prg_rom_.data()), prg_rom_.size());
 
     if (header.chr_rom_chunks > 0) {
         chr_rom_.resize(header.chr_rom_chunks * chr_rom_chunk_size);
-        file.read(reinterpret_cast<char *>(chr_rom_.data()), chr_rom_.size());
-    } else {    // Program uses CHR-RAM
+        file.read(reinterpret_cast<char*>(chr_rom_.data()), chr_rom_.size());
+    } else { // Program uses CHR-RAM
         chr_rom_.resize(chr_rom_chunk_size, 0);
     }
 

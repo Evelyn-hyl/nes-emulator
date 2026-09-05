@@ -17,6 +17,15 @@ IndentCaseLabels: true
 NamespaceIndentation: All
 AccessModifierOffset: 0
 
+AlignConsecutiveBitFields: Consecutive
+AlignTrailingComments: Always
+
+AlignAfterOpenBracket: BlockIndent
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+
 PointerAlignment: Left
 ReferenceAlignment: Left
 

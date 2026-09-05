@@ -5,10 +5,7 @@
 #include "mapper.hpp"
 class Cartridge {
     public:
-    enum MirrorMode {
-        VERTICAL,
-        HORIZONTAL
-    };
+    enum MirrorMode { VERTICAL, HORIZONTAL };
 
     explicit Cartridge(const std::string& filename);
 
@@ -34,11 +31,11 @@ class Cartridge {
         uint8_t mapper_id_high;
         uint8_t padding[8];
     };
-    
+
     bool valid_{};
     uint8_t mapper_id_{};
     MirrorMode mirror_mode_{};
-    Mapper *mapper_;
+    Mapper* mapper_;
     std::vector<uint8_t> prg_rom_;
     std::vector<uint8_t> chr_rom_;
 };
