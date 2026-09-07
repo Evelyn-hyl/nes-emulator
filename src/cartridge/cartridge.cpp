@@ -40,7 +40,7 @@ void Cartridge::ppu_write(uint16_t addr, uint8_t data) {
         return;
     }
 
-    std::cerr << "[CARTRIDGE][PPU_WRITE ERROR] Performed write on address outside of chr_ram range!" << "\n";
+    std::cerr << "[CARTRIDGE][PPU_WRITE ERROR] Performed write on address outside of chr_ram range!" << std::endl;
 
     return;
 }
@@ -49,7 +49,7 @@ Cartridge::Cartridge(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
-        std::cerr << "Failed to open ROM file: " << filename << "\n";
+        std::cerr << "Failed to open ROM file: " << filename << std::endl;
         return;
     }
 
@@ -57,7 +57,7 @@ Cartridge::Cartridge(const std::string& filename) {
     file.read(reinterpret_cast<char*>(&header), sizeof(iNESHeader));
 
     if (header.name[0] != 'N' || header.name[1] != 'E' || header.name[2] != 'S' || header.name[3] != 0x1A) {
-        std::cerr << "Invalid iNES header." << "\n";
+        std::cerr << "Invalid iNES header." << std::endl;
         return;
     }
 
