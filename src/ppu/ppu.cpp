@@ -200,6 +200,107 @@ void PPU::render_pattern_table(int bank, uint32_t* output_pixel_buffer) {
     }
 }
 
+void PPU::clock() {
+    bool is_visible_scanline = scanline_ >= 0 && scanline_ <= 239;
+    bool is_prerender_scanline = scanline_ == 261;
+    bool is_render_line = is_visible_scanline || is_prerender_scanline;
+
+    // Active rendering scanlines and pre-render scanline
+    if (is_render_line) {
+        if (cycle_ >= 1 && cycle_ <= 256) {
+            // Fetch data for current scanline and output to frame buffer
+            step();
+        }
+        if (cycle_ >= 321 && cycle_ <= 336) {
+            // [TODO] Fetches data for first two tiles for next scanline
+        }
+    }
+
+    // VBlank
+    if (scanline_ == 241) {
+        ppu_ctrl_.nmi_enable = 1;
+        // [TODO]
+    }
+
+    // Update cycle_ and scanline_ accordingly
+}
+
+void PPU::step() {
+    // Fine x selects 4 bits, 1 bit from each shift register
+    uint8_t bg_pixel = extract_bg_pixel();
+
+    // Lookup Palette RAM & Master Palette
+    uint32_t color_pixel = get_bg_pixel_color(bg_pixel);
+
+    // Write to frame buffer
+    frame_buffer_[scanline_ * 256 + cycle_] = color_pixel;
+
+    switch (cycle_ % 8) {
+        case 0: { // Fetch Pattern Table High Byte
+            bg_next_patt_hi_ = bg_next_patt_lo_ | 0x0008;
+
+            // Empty out latches into low byte of the shift registers
+            bg_shift_patt_hi_ = bg_shift_patt_hi_ & 0xFF00 | bg_next_patt_hi_;
+            bg_shift_patt_lo_ = bg_shift_patt_lo_ & 0xFF00 | bg_next_patt_lo_;
+
+            uint8_t shift_amount = (v_.coarse_y & 0x02) | ((v_.coarse_x & 0x02) >> 1);
+
+            // Bits 0-1 Top-Left, Bits 2-3 Top-Right, Bits 4-5 Bottom-Left, Bits 6-7 Bottom-Right
+            uint8_t current_palette = (bg_next_tile_attr_ >> shift_amount * 2) & 0x03;
+
+            bg_shift_attr_hi_ = bg_shift_attr_hi_ & 0xFF00 | ((current_palette & 0x02) >> 1);
+            bg_shift_attr_lo_ = bg_shift_attr_lo_ & 0xFF00 | current_palette & 0x01;
+
+            break;
+        }
+        case 2: // Fetch NameTable Byte
+            bg_next_tile_id_ = ppu_read(v_.reg);
+            break;
+
+        case 4: { // Fetch Attribute Table Byte
+            uint16_t attr_addr =
+                0x23C0 | (v_.nametable << 10) | ((v_.coarse_y & 0x001C) << 1) | ((v_.coarse_x & 0x001C) >> 2);
+            bg_next_tile_attr_ = ppu_read(attr_addr);
+            break;
+        }
+        case 6: { // Fetch Pattern Table Low Byte
+            uint16_t patt_addr = (ppu_ctrl_.bg_pattern << 12) | (bg_next_tile_id_ << 4) | v_.fine_y;
+            bg_next_patt_lo_ = ppu_read(patt_addr);
+            break;
+        }
+        default:
+            break;
+    }
+
+    // Shift registers by 1 bit
+    bg_shift_attr_hi_ <<= 1;
+    bg_shift_attr_lo_ <<= 1;
+    bg_shift_patt_hi_ <<= 1;
+    bg_shift_patt_lo_ <<= 1;
+}
+
+uint32_t PPU::get_bg_pixel_color(uint8_t bg_pixel) {
+    uint8_t palette_ram_offset = (bg_pixel >> 2) * 4 + bg_pixel & 0x0003;
+
+    // [TODO] Replace when adding sprite rendering (starts at $3F10)
+    uint32_t nes_color_index = ppu_read(0x3F00 + palette_ram_offset) & 0x3F;
+
+    return SYSTEM_PALETTE[nes_color_index];
+}
+
+uint8_t PPU::extract_bg_pixel() {
+    uint16_t bit_mux = 0x8000 >> fine_x_;
+
+    uint8_t attr_high = (bg_shift_attr_hi_ & bit_mux) ? 1 : 0;
+    uint8_t attr_low = (bg_shift_attr_lo_ & bit_mux) ? 1 : 0;
+    uint8_t patt_high = (bg_shift_patt_hi_ & bit_mux) ? 1 : 0;
+    uint8_t patt_low = (bg_next_patt_lo_ & bit_mux) ? 1 : 0;
+
+    uint8_t bg_pixel = (attr_high << 3) | (attr_low << 2) | (patt_high << 1) | patt_low;
+
+    return bg_pixel;
+}
+
 // Virtual(Nametables) to physical(Banks) address mapper
 uint16_t PPU::map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) const {
     if (addr >= 0x3000) {
