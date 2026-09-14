@@ -1,6 +1,4 @@
-# nes-emulator
-
-# NES Emulator (C++/SDL2) — MVP
+# Etalume - NES Emulator (C++/SDL2)
 
 A minimal but functional NES emulator built in C++ using SDL2 for windowing/input/rendering.
 Goal: run real NROM (mapper 0) games/test ROMs with correct CPU behavior and a serviceable,

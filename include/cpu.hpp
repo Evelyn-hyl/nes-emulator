@@ -18,41 +18,41 @@ struct Registers {
     unsigned char y;
 
     Registers() {
-      this->a = 0;
-      this->x = 0;
-      this->y = 0;
-      this->ip = 0;
-      this->sr = 0;
-      this->sp = 0xFF;
+        this->a = 0;
+        this->x = 0;
+        this->y = 0;
+        this->ip = 0;
+        this->sr = 0;
+        this->sp = 0xFF;
     }
 };
 
 enum FlagKind {
-  // Carry Bit 0 - If Result > 0xFF, unsigned overflow occurred
-  // If Result < 0x00, unsigned underflow occurred
-  C,
-  // Zero Bit 1 - Checks if result or data loaded == 0x00
-  Z,
-  // Interrupt Bit 2 - When on, hardware interrupts are blocked and ignored by
-  // the CPU
-  I,
-  // Decimal Bit 3 - Tells us whether decimal mode is active or not
-  D,
-  // Break Bit 4 - Tells us whether an interrupt was caused by a software BRK vs
-  // hardware
-  B,
-  // Unused Bit 5 - Always constant and ignored in hardware behaviour
-  U,
-  // Overflow Bit 6 - Set during arithmetic when an underflow or overflow breaks
-  // two complement bounds.
-  V,
-  // Negative Bit 7 - Set if the highest bit of the result is set, representing
-  // a negative number in signed binary
-  N
+    // Carry Bit 0 - If Result > 0xFF, unsigned overflow occurred
+    // If Result < 0x00, unsigned underflow occurred
+    C,
+    // Zero Bit 1 - Checks if result or data loaded == 0x00
+    Z,
+    // Interrupt Bit 2 - When on, hardware interrupts are blocked and ignored by
+    // the CPU
+    I,
+    // Decimal Bit 3 - Tells us whether decimal mode is active or not
+    D,
+    // Break Bit 4 - Tells us whether an interrupt was caused by a software BRK vs
+    // hardware
+    B,
+    // Unused Bit 5 - Always constant and ignored in hardware behaviour
+    U,
+    // Overflow Bit 6 - Set during arithmetic when an underflow or overflow breaks
+    // two complement bounds.
+    V,
+    // Negative Bit 7 - Set if the highest bit of the result is set, representing
+    // a negative number in signed binary
+    N
 };
 
 class CPU {
-  public:
+    public:
     CPU();
     void execute();
 
@@ -67,16 +67,14 @@ class CPU {
     bool is_active_flag(FlagKind kind);
     void helper_adc(unsigned short memory);
     unsigned char cpu_read(unsigned short address) const;
-    void set_cartdridge(Cartridge *cartdridge) {
-      this->cartridge_ = cartdridge;
-    };
+    void set_cartdridge(Cartridge* cartdridge) { this->cartridge_ = cartdridge; };
 
-  private:
-    Cartridge *cartridge_ = nullptr; // Access to PRG-ROM
+    private:
+    Cartridge* cartridge_ = nullptr; // Access to PRG-ROM
     // 2KB onboard memory from [0x0000, 0x07FF]
     std::vector<unsigned char> memory;
     Registers registers;
-    Bus *bus;
+    Bus* bus;
 };
 
 #endif

@@ -12,6 +12,18 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Point git at the repo's tracked hooks (enables the pre-commit auto-formatter)
+# for anyone who configures this project, without requiring a manual setup step.
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} config core.hooksPath .githooks
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+endif()
+
 include(FetchContent)
 
 # Dependencies
@@ -43,6 +55,9 @@ endif()
 
 set(CORE_SOURCES
     src/cartridge/cartridge.cpp
+    src/cartridge/mapper.cpp
+    src/ui/frame_limiter.cpp
+    src/ppu/ppu.cpp
     # List backend cpp relative file paths here
 )
 
@@ -71,3 +86,11 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # Suppress only the GNU/Clang extension warning for anonymous structs
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+elseif(MSVC)
+    # Suppress C4201: nonstandard extension used: nameless struct/union
+    target_compile_options(${PROJECT_NAME} PRIVATE /wd4201)
+endif()
