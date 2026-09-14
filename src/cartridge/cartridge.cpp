@@ -63,7 +63,7 @@ Cartridge::Cartridge(const std::string& filename) {
 
     mapper_id_ = (header.mapper_id_high & 0xF0) | (header.mapper_id_low >> 4);
 
-    set_mirror_mode((header.mapper_id_low & 0x01) ? VERTICAL : HORIZONTAL);
+    set_mirror_mode((header.mapper_id_low & 0x01) ? MirrorMode::VERTICAL : MirrorMode::HORIZONTAL);
 
     prg_rom_.resize(header.prg_rom_chunks * prg_rom_chunk_size);
     file.read(reinterpret_cast<char*>(prg_rom_.data()), prg_rom_.size());

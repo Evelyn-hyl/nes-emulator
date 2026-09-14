@@ -302,7 +302,7 @@ uint8_t PPU::extract_bg_pixel() {
 }
 
 // Virtual(Nametables) to physical(Banks) address mapper
-uint16_t PPU::map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) const {
+uint16_t PPU::map_vram_addr(uint16_t addr, MirrorMode mirror_mode) const {
     if (addr >= 0x3000) {
         addr &= 0x2FFF;
     }
@@ -310,7 +310,7 @@ uint16_t PPU::map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) co
     uint16_t offset = addr - 0x2000; // Align with physical array addresses
 
     // Map address to nametables
-    if (mirror_mode == Cartridge::MirrorMode::HORIZONTAL) {
+    if (mirror_mode == MirrorMode::HORIZONTAL) {
         if (offset <= 0x07FF) {
             // Nametable 0 or 1 offset
             return offset & 0x03FF;

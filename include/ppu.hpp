@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include "types.hpp"
 #include "cartridge.hpp"
 
 class Cartridge;
@@ -131,7 +132,7 @@ class PPU {
     void step();
     uint8_t extract_bg_pixel();
     uint32_t get_bg_pixel_color(uint8_t bg_pixel);
-    uint16_t map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) const;
+    uint16_t map_vram_addr(uint16_t addr, MirrorMode mirror_mode) const;
 
     /** Master RGB Palette */
     inline static const uint32_t SYSTEM_PALETTE[64] = {
