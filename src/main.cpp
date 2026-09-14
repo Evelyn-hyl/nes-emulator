@@ -14,12 +14,12 @@ int main(int argc, char* argv[]) {
     ppu.set_cartridge(&cart);
 
     if (!cart.is_valid()) {
-        std::cerr << "Cartridge loading failed." << "\n";
+        std::cerr << "Cartridge loading failed." << std::endl;
         return 1;
     }
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "SDL initialization failed: " << SDL_GetError() << "\n";
+        std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
         return 1;
     }
 
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     );
 
     if (!window) {
-        std::cerr << "Window creation failed: " << SDL_GetError() << "\n";
+        std::cerr << "Window creation failed: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;
     }
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     if (!renderer) {
-        std::cerr << "Renderer creation failed: " << SDL_GetError() << "\n";
+        std::cerr << "Renderer creation failed: " << SDL_GetError() << std::endl;
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     );
 
     if (!texture) {
-        std::cerr << "Texture creation failed: " << SDL_GetError() << "\n";
+        std::cerr << "Texture creation failed: " << SDL_GetError() << std::endl;
         SDL_DestroyWindow(window);
         SDL_DestroyRenderer(renderer);
         SDL_Quit();
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<uint32_t> pixel_buffer(PPU::NES_WIDTH * PPU::NES_HEIGHT, 0xFF000000);
 
-    std::cout << "SDL canvas successfully initialized." << "\n";
+    std::cout << "SDL canvas successfully initialized." << std::endl;
 
     FrameLimiter frame_limiter;
 
@@ -111,6 +111,6 @@ int main(int argc, char* argv[]) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    std::cout << "Canvas window closed." << "\n";
+    std::cout << "Canvas window closed." << std::endl;
     return 0;
 }

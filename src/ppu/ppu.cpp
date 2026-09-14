@@ -1,4 +1,4 @@
-#include "ppu.hpp"
+# include "ppu.hpp"
 
 uint8_t PPU::cpu_read(uint16_t addr) {
     uint8_t result = 0;
@@ -200,8 +200,231 @@ void PPU::render_pattern_table(int bank, uint32_t* output_pixel_buffer) {
     }
 }
 
+void PPU::clock() {
+    bool is_visible_scanline = scanline_ >= 0 && scanline_ <= 239;
+    bool is_prerender_scanline = scanline_ == 261;
+    bool is_renderering_enabled = ppu_mask_.render_bg || ppu_mask_.render_sprites;
+
+    if (is_visible_scanline || is_prerender_scanline) {
+        if (cycle_ >= 1 && cycle_ <= 256 && is_renderering_enabled) {
+            // Fetch bg data for current scanline and output to frame buffer
+            step_background_fetch();
+
+            if (is_visible_scanline) {
+                render_pixel();
+            }
+
+            // Secondary OAM Initialization
+            if (cycle_ >= 1 && cycle_ <= 64) {
+                if (cycle_ % 2 == 0) {
+                    int index = (cycle_ - 2) / 2;
+                    secondary_oam_[index] = 0xFF;
+                }
+            }
+
+            if (cycle_ == 256) {
+                // Simplified Sprite Evaluation (Cycles 65-256)
+                evaluate_sprites();  
+                increment_y();
+            }
+        }
+        
+        if (cycle_ >= 257 && cycle_ <= 320 && is_renderering_enabled) {
+            if (cycle_ == 257) {
+                v_.reg = t_.reg;
+            }
+
+            // Fetch sprite data for next scanline
+            step_sprite_fetch();
+        }
+
+        if (cycle_ >= 321 && cycle_ <= 336) {
+            // Fetch bg data of first 2 tiles in the next scanline
+            step_background_fetch();
+        }
+    }
+
+    // VBlank
+    if (scanline_ == 241) {
+        ppu_status_.vblank = 1;
+    }
+
+    if (is_prerender_scanline && cycle_ == 1) {
+        ppu_status_.vblank = 0;
+    }
+
+    advance_cycle_scanline();
+}
+
+void PPU::step_background_fetch() {
+    switch (cycle_ % 8) {
+        case 0: { // Fetch Pattern Table High Byte
+            uint16_t patt_addr = ((ppu_ctrl_.bg_pattern << 12) | (bg_next_tile_id_ << 4) | v_.fine_y) | 0x0008;
+            bg_next_patt_hi_ = ppu_read(patt_addr);
+
+            // Empty out latches into low byte of the shift registers
+            bg_shift_patt_hi_ = bg_shift_patt_hi_ & 0xFF00 | bg_next_patt_hi_;
+            bg_shift_patt_lo_ = bg_shift_patt_lo_ & 0xFF00 | bg_next_patt_lo_;
+
+            uint8_t shift_amount = (v_.coarse_y & 0x02) | ((v_.coarse_x & 0x02) >> 1);
+
+            // Bits 0-1 Top-Left, Bits 2-3 Top-Right, Bits 4-5 Bottom-Left, Bits 6-7 Bottom-Right
+            uint8_t current_palette = (bg_next_tile_attr_ >> shift_amount * 2) & 0x03;
+
+            bg_shift_attr_hi_ = bg_shift_attr_hi_ & 0xFF00 | ((current_palette & 0x02) >> 1);
+            bg_shift_attr_lo_ = bg_shift_attr_lo_ & 0xFF00 | current_palette & 0x01;
+
+            increment_x();
+
+            break;
+        }
+        case 2: // Fetch NameTable Byte
+            bg_next_tile_id_ = ppu_read(v_.reg);
+            break;
+
+        case 4: { // Fetch Attribute Table Byte
+            uint16_t attr_addr =
+                0x23C0 | (v_.nametable << 10) | ((v_.coarse_y & 0x001C) << 1) | ((v_.coarse_x & 0x001C) >> 2);
+            bg_next_tile_attr_ = ppu_read(attr_addr);
+            break;
+        }
+        case 6: { // Fetch Pattern Table Low Byte
+            uint16_t patt_addr = (ppu_ctrl_.bg_pattern << 12) | (bg_next_tile_id_ << 4) | v_.fine_y;
+            bg_next_patt_lo_ = ppu_read(patt_addr);
+            break;
+        }
+        default:
+            break;
+    }
+
+    // Shift registers by 1 bit
+    bg_shift_attr_hi_ <<= 1;
+    bg_shift_attr_lo_ <<= 1;
+    bg_shift_patt_hi_ <<= 1;
+    bg_shift_patt_lo_ <<= 1;
+}
+
+void PPU::step_sprite_fetch() {
+    switch (cycle_ % 8) {
+        case 0: {
+            // [TODO]
+            break;
+        }
+        case 4: {
+            // [TODO]
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void PPU::evaluate_sprites() {
+    int SPRITE_COUNT = 64;
+    uint8_t sec_oam_index = 0;
+
+    for (int n = 0; n < SPRITE_COUNT; n++) {
+        uint8_t y = oam_[n * 4];
+        int sprite_height = ppu_ctrl_.sprite_size ? 16 : 8;
+
+        if (scanline_ >= y && y <= (scanline_ + sprite_height)) {
+            secondary_oam_[sec_oam_index] = y;
+            sec_oam_index ++;
+
+            if (sec_oam_index < secondary_oam_.size()) {
+                for (int m = 1; m < 4; m++) {
+                    secondary_oam_[sec_oam_index] = oam_[n * 4 + m];
+                    sec_oam_index ++;
+                }
+            } else {
+                // Omits the sprite overflow hardware bug for now
+                break;
+            }
+        }
+    }
+}
+
+void PPU::render_pixel() {
+    // Fine x selects 4 bits, 1 bit from each shift register
+    uint8_t bg_pixel = extract_bg_pixel();
+
+    // Lookup Palette RAM & Master Palette
+    uint8_t palette_ram_offset = ((bg_pixel >> 2) * 4) + (bg_pixel & 0x0003);
+
+    // [TODO] Replace when adding sprite rendering (starts at $3F10)
+    uint32_t nes_color_index = ppu_read(0x3F00 + palette_ram_offset) & 0x3F;
+
+    uint32_t color_pixel = SYSTEM_PALETTE[nes_color_index];
+
+    // Write to frame buffer
+    frame_buffer_[scanline_ * 256 + cycle_ - 1] = color_pixel;
+}
+
+void PPU::advance_cycle_scanline() {
+    bool is_odd_last_cycle = cycle_ == 339 && odd_frame_ && (ppu_mask_.render_bg || ppu_mask_.render_sprites);
+    bool is_last_cycle = cycle_ == 340;
+    bool is_last_scanline = scanline_ == 261;
+
+    if (is_last_scanline) {
+        if (is_odd_last_cycle || is_last_cycle) {
+            cycle_ = 0;
+            scanline_ = 0;
+            frame_complete_ = true;
+            odd_frame_ = !odd_frame_;
+            return;
+        }
+    } else {
+        if (is_last_cycle) {
+            cycle_ = 0;
+            scanline_ += 1;
+            return;
+        }
+    }
+    
+    cycle_ += 1;
+}
+
+void PPU::increment_x() {
+    if (v_.coarse_x == 31) {
+        v_.coarse_x = 0;
+        v_.nametable ^= 0x01;
+    } else {
+        v_.coarse_x += 1;
+    }
+}
+
+void PPU::increment_y() {
+    if (v_.fine_y < 7) {
+        v_.fine_y += 1;
+    } else {
+        v_.fine_y = 0;
+
+        if (v_.coarse_y == 29) {
+            v_.coarse_y = 0;
+            v_.nametable ^= 0x02;
+        } else if (v_.coarse_y == 31) {
+            v_.coarse_y = 0;
+        } else {
+            v_.coarse_y += 1;
+        }
+    }
+}
+
+uint8_t PPU::extract_bg_pixel() {
+    uint16_t bit_mux = 0x8000 >> fine_x_;
+
+    uint8_t attr_high = (bg_shift_attr_hi_ & bit_mux) ? 1 : 0;
+    uint8_t attr_low = (bg_shift_attr_lo_ & bit_mux) ? 1 : 0;
+    uint8_t patt_high = (bg_shift_patt_hi_ & bit_mux) ? 1 : 0;
+    uint8_t patt_low = (bg_next_patt_lo_ & bit_mux) ? 1 : 0;
+
+    uint8_t bg_pixel = (attr_high << 3) | (attr_low << 2) | (patt_high << 1) | patt_low;
+
+    return bg_pixel;
+}
+
 // Virtual(Nametables) to physical(Banks) address mapper
-uint16_t PPU::map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) const {
+uint16_t PPU::map_vram_addr(uint16_t addr, MirrorMode mirror_mode) const {
     if (addr >= 0x3000) {
         addr &= 0x2FFF;
     }
@@ -209,7 +432,7 @@ uint16_t PPU::map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) co
     uint16_t offset = addr - 0x2000; // Align with physical array addresses
 
     // Map address to nametables
-    if (mirror_mode == Cartridge::MirrorMode::HORIZONTAL) {
+    if (mirror_mode == MirrorMode::HORIZONTAL) {
         if (offset <= 0x07FF) {
             // Nametable 0 or 1 offset
             return offset & 0x03FF;

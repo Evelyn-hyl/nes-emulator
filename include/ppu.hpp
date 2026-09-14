@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include "types.hpp"
 #include "cartridge.hpp"
 
 class Cartridge;
@@ -13,7 +14,7 @@ class PPU {
     static constexpr int NES_WIDTH = 256;
     static constexpr int NES_HEIGHT = 240;
 
-    void set_cartridge(Cartridge* cartridge) { this->cartridge_ = cartridge; };
+    void set_cartridge(Cartridge* cartridge) { this->cartridge_ = cartridge; }
 
     uint8_t cpu_read(uint16_t addr);
     void cpu_write(uint16_t addr, uint8_t data);
@@ -25,12 +26,16 @@ class PPU {
 
     void clock();
     void reset();
+    bool is_frame_complete() const { return frame_complete_; }
+    void clear_frame_complete() { frame_complete_ = false; }
+    const std::array<uint32_t, NES_WIDTH * NES_HEIGHT>& get_frame_buffer() const { return frame_buffer_; }
 
     private:
     /** Internal Hardware Memory Arrays */
     std::array<uint8_t, 2048> vram_{}; // Nametables & Attribute Tables (Bank 0 + Bank 1)
     std::array<uint8_t, 32> palette_ram_{};
     std::array<uint8_t, 256> oam_{};
+    std::array<uint8_t, 32> secondary_oam_{};
     Cartridge* cartridge_ = nullptr; // Access to CHR-ROM for Pattern Tables
 
     /** Bitfields for $2000 */
@@ -97,6 +102,7 @@ class PPU {
     uint8_t oam_addr_{};     // $2003
 
     /** Internal Buffers */
+    std::array<uint32_t, NES_WIDTH * NES_HEIGHT> frame_buffer_{};
     uint8_t ppu_read_buffer_{};
     uint8_t open_bus_{};
 
@@ -107,6 +113,57 @@ class PPU {
     uint16_t fine_x_{}; // Horizontal pixel offset
     bool w_{};          // Write latch
 
+    void increment_x();
+    void increment_y();
+
+    int cycle_{};    // 341 cycles per scanline
+    int scanline_{}; // 262 scanlines (0-261)
+    bool frame_complete_{};
+    bool odd_frame_{};
+
+    /** Rendering Latches (Staging) */
+    uint8_t bg_next_tile_id_{};   // Holds tile number fetched from Nametable
+    uint8_t bg_next_tile_attr_{}; // Holds 8-bit palette data fetched from Attribute Table
+    uint8_t bg_next_patt_lo_{};   // Holds lower 8 bits of the tile's pixel data fetched from Pattern Table
+    uint8_t bg_next_patt_hi_{};   // Holds higher 8 bits of the tile's pixel data fetched from Pattern Table
+
+    /** Background Shift Registers (Active Outputs to Screen) */
+    uint16_t bg_shift_patt_lo_{};
+    uint16_t bg_shift_patt_hi_{};
+    uint16_t bg_shift_attr_lo_{};
+    uint16_t bg_shift_attr_hi_{};
+
+    /** Sprite Output Unit */
+    struct SpriteOutputUnit {
+        uint8_t pattern_lo;
+        uint8_t pattern_hi;
+        uint8_t attr_latch;
+        uint8_t x_counter;
+    };
+
+    std::array<SpriteOutputUnit, 8> sprite_render_pipeline_{};
+    
+    /** Per-Cycle Rendering Pipeline */
+    // In NES hardware, the background and sprite fetch 
+    // share the same 8-cycle Bus, but for the sake of 
+    // separation of concerns, we use two functions
+    void step_background_fetch();
+    void step_sprite_fetch();
+    void render_pixel();
+    uint8_t extract_bg_pixel();
+    void evaluate_sprites();
+    void advance_cycle_scanline();
+
     /** Helpers */
-    uint16_t map_vram_addr(uint16_t addr, Cartridge::MirrorMode mirror_mode) const;
+    uint16_t map_vram_addr(uint16_t addr, MirrorMode mirror_mode) const;
+
+    /** Master RGB Palette */
+    inline static const uint32_t SYSTEM_PALETTE[64] = {
+        0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00, 0x333500, 0x0B4800, 0x005200,
+        0x004F08, 0x00404D, 0x000000, 0x000000, 0x000000, 0xADADAD, 0x155FD9, 0x4240FF, 0x7527FE, 0xA01ACC, 0xB71E7B,
+        0xB53120, 0x994E00, 0x6B6D00, 0x388700, 0x0C9300, 0x008F32, 0x007C8D, 0x000000, 0x000000, 0x000000, 0xFFFEFF,
+        0x64B0FF, 0x9290FF, 0xC676FF, 0xF36AFF, 0xFE6ECC, 0xFE8170, 0xEA9E22, 0xBCBE00, 0x88D800, 0x5CE430, 0x45E082,
+        0x48CDDE, 0x4F4F4F, 0x000000, 0x000000, 0xFFFEFF, 0xC0DFFF, 0xD3D2FF, 0xE8C8FF, 0xFBC2FF, 0xFEC4EA, 0xFECCC5,
+        0xF7D8A5, 0xE4E594, 0xCFEF96, 0xBDF4AB, 0xB3F3CC, 0xB5EBF2, 0xB8B8B8, 0x000000, 0x000000
+    };
 };

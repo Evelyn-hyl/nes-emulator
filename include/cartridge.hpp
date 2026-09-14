@@ -3,10 +3,9 @@
 #include <string>
 #include <vector>
 #include "mapper.hpp"
+#include "types.hpp"
 class Cartridge {
     public:
-    enum MirrorMode { VERTICAL, HORIZONTAL };
-
     explicit Cartridge(const std::string& filename);
 
     bool is_valid() const { return valid_; };
