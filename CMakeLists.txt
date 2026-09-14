@@ -86,3 +86,11 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # Suppress only the GNU/Clang extension warning for anonymous structs
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+elseif(MSVC)
+    # Suppress C4201: nonstandard extension used: nameless struct/union
+    target_compile_options(${PROJECT_NAME} PRIVATE /wd4201)
+endif()
