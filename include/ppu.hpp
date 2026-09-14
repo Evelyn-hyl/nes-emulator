@@ -35,6 +35,7 @@ class PPU {
     std::array<uint8_t, 2048> vram_{}; // Nametables & Attribute Tables (Bank 0 + Bank 1)
     std::array<uint8_t, 32> palette_ram_{};
     std::array<uint8_t, 256> oam_{};
+    std::array<uint8_t, 32> secondary_oam_{};
     Cartridge* cartridge_ = nullptr; // Access to CHR-ROM for Pattern Tables
 
     /** Bitfields for $2000 */
@@ -112,7 +113,15 @@ class PPU {
     uint16_t fine_x_{}; // Horizontal pixel offset
     bool w_{};          // Write latch
 
-    /** Background Rendering Latches (Staging) */
+    void increment_x();
+    void increment_y();
+
+    int cycle_{};    // 341 cycles per scanline
+    int scanline_{}; // 262 scanlines (0-261)
+    bool frame_complete_{};
+    bool odd_frame_{};
+
+    /** Rendering Latches (Staging) */
     uint8_t bg_next_tile_id_{};   // Holds tile number fetched from Nametable
     uint8_t bg_next_tile_attr_{}; // Holds 8-bit palette data fetched from Attribute Table
     uint8_t bg_next_patt_lo_{};   // Holds lower 8 bits of the tile's pixel data fetched from Pattern Table
@@ -124,14 +133,28 @@ class PPU {
     uint16_t bg_shift_attr_lo_{};
     uint16_t bg_shift_attr_hi_{};
 
-    int cycle_{};    // 341 cycles per scanline
-    int scanline_{}; // 262 scanlines (0-261)
-    bool frame_complete_{};
+    /** Sprite Output Unit */
+    struct SpriteOutputUnit {
+        uint8_t pattern_lo;
+        uint8_t pattern_hi;
+        uint8_t attr_latch;
+        uint8_t x_counter;
+    };
+
+    std::array<SpriteOutputUnit, 8> sprite_render_pipeline_{};
+    
+    /** Per-Cycle Rendering Pipeline */
+    // In NES hardware, the background and sprite fetch 
+    // share the same 8-cycle Bus, but for the sake of 
+    // separation of concerns, we use two functions
+    void step_background_fetch();
+    void step_sprite_fetch();
+    void render_pixel();
+    uint8_t extract_bg_pixel();
+    void evaluate_sprites();
+    void advance_cycle_scanline();
 
     /** Helpers */
-    void step();
-    uint8_t extract_bg_pixel();
-    uint32_t get_bg_pixel_color(uint8_t bg_pixel);
     uint16_t map_vram_addr(uint16_t addr, MirrorMode mirror_mode) const;
 
     /** Master RGB Palette */
