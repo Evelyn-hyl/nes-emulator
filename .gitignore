@@ -16,3 +16,6 @@ roms/*
 
 # Editor (machine-specific IntelliSense config, etc.)
 .vscode/
+
+# Tests
+/tests/nestest/artifacts/
