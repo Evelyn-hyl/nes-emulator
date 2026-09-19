@@ -1,21 +1,25 @@
-#include "../../include/bus.hpp"
-#include "../../include/cpu.hpp"
-#include "../../include/ppu.hpp"
+#include "bus.hpp"
+#include "cpu.hpp"
+#include "ppu.hpp"
 
-void Bus::hook(Cartridge* cartdridge, PPU* ppu, CPU* cpu) {
-    this->cpu_->set_cartridge(cartdridge);
-    this->ppu_->set_cartridge(cartdridge);
+void Bus::hook(Cartridge* cartridge, PPU* ppu, CPU* cpu) {
+    cartridge_ = cartridge;
+    cpu_ = cpu;
+    ppu_ = ppu;
+
+    cpu_->set_cartridge(cartridge_);
+    ppu_->set_cartridge(cartridge_);
 };
 
 uint8_t Bus::cpu_read_ppu(uint16_t addr) {
-    if (this->ppu_ != nullptr) {
-        return this->ppu_->cpu_read(addr);
+    if (ppu_ != nullptr) {
+        return ppu_->cpu_read(addr);
     }
     return 0;
 };
 
 void Bus::cpu_write_ppu(uint16_t addr, uint8_t data) {
-    if (this->ppu_ != nullptr) {
-        this->ppu_->cpu_write(addr, data);
+    if (ppu_ != nullptr) {
+        ppu_->cpu_write(addr, data);
     }
 };
