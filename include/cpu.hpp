@@ -67,7 +67,8 @@ class CPU {
     uint8_t rotate_left(uint8_t value);
     uint8_t rotate_right(uint8_t value);
     uint8_t shift_left(uint8_t value);
-    void add_with_carry(uint16_t operand);
+    uint8_t shift_right(uint8_t value);
+    void add_with_carry(uint8_t operand);
 
     // Addressing Helpers
     AddressResult get_indexed_indirect_x_addr();
@@ -94,7 +95,7 @@ class CPU {
     void set_registers(const Registers& registers) { registers_ = registers; }
 
     // Component Connections
-    void set_cartridge(Cartridge* cartdridge) { cartridge_ = cartdridge; }
+    void set_cartridge(Cartridge* cartridge) { cartridge_ = cartridge; }
 
     private:
     // Access to PRG-ROM

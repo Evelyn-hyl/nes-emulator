@@ -109,30 +109,22 @@ bool CPU::is_flag_active(FlagKind kind) {
     }
 }
 
-void CPU::add_with_carry(uint16_t operand) {
-    uint8_t result = static_cast<uint8_t>(registers_.a + operand + is_flag_active(FlagKind::C));
+void CPU::add_with_carry(uint8_t operand) {
+    uint16_t sum = static_cast<uint16_t>(registers_.a) + static_cast<uint16_t>(operand) + is_flag_active(FlagKind::C);
+
+    uint8_t result = static_cast<uint8_t>(sum);
 
     // If it wraps past the max unsigned overflow occurred
-    if (result > 0xFF) {
-        set_flag(FlagKind::C, true);
-    }
-
-    // If zero then status is set to true
-    if (result == 0x0) {
-        set_flag(FlagKind::Z, true);
-    }
+    set_flag(FlagKind::C, sum > 0xFF);
+    set_flag(FlagKind::Z, result == 0);
 
     // If the result's sign is different from both A's and operand's, signed
     // overflow (or underflow) occurred.
-    if (((result ^ registers_.a) & (result ^ operand) & 0x80) != 0) {
-        set_flag(FlagKind::V, true);
-    }
+    set_flag(FlagKind::V, ((result ^ registers_.a) & (result ^ operand) & 0x80) != 0);
 
     // If the 7th bit of the result is on, then negative flag is turned on
     // xxxxxxxx & 0x10000000 != 0
-    if ((result & 0x80) != 0) {
-        set_flag(FlagKind::N, true);
-    }
+    set_flag(FlagKind::N, (result & 0x80) != 0);
 
     registers_.a = result;
 }
@@ -223,9 +215,18 @@ uint8_t CPU::rotate_right(uint8_t value) {
 }
 
 uint8_t CPU::shift_left(uint8_t value) {
-    set_flag(FlagKind::C, (value & 0x08) != 0);
+    set_flag(FlagKind::C, (value & 0x80) != 0);
 
     uint8_t result = static_cast<uint8_t>(value << 1);
+
+    set_zn_flags(result);
+    return result;
+}
+
+uint8_t CPU::shift_right(uint8_t value) {
+    set_flag(FlagKind::C, (value & 0x01) != 0);
+
+    uint8_t result = static_cast<uint8_t>(value >> 1);
 
     set_zn_flags(result);
     return result;
@@ -422,9 +423,10 @@ void CPU::execute() {
         // Zero Page,X
         case 0x16: {
             uint8_t addr = cpu_read(registers_.ip++);
-            uint8_t result = shift_left(cpu_read((addr + registers_.x) % 256));
+            uint8_t indexed_addr = (addr + registers_.x) % 256;
+            uint8_t result = shift_left(cpu_read(indexed_addr));
 
-            cpu_write(addr, result);
+            cpu_write(indexed_addr, result);
 
             add_cycles(6);
             break;
@@ -442,7 +444,7 @@ void CPU::execute() {
         // Absolute,X
         case 0x1E: {
             AddressResult addr_result = get_absolute_x_addr();
-            uint8_t result = shift_left(cpu_read(addr_result.address + registers_.x));
+            uint8_t result = shift_left(cpu_read(addr_result.address));
 
             cpu_write(addr_result.address, result);
 
@@ -871,9 +873,9 @@ void CPU::execute() {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
             uint8_t operand = cpu_read(zero_page_addr);
             uint8_t result = operand - 1;
-            memory_.at(zero_page_addr) = result;
-            set_flag(FlagKind::Z, result == 0);
-            set_flag(FlagKind::N, (result & 0x80));
+
+            cpu_write(zero_page_addr, result);
+            set_zn_flags(result);
 
             add_cycles(5);
             break;
@@ -881,35 +883,36 @@ void CPU::execute() {
         // Zero Page,X
         case 0xD6: {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
-            uint8_t operand = cpu_read((zero_page_addr + registers_.x) % 256);
+            uint8_t indexed_addr = (zero_page_addr + registers_.x) % 256;
+            uint8_t operand = cpu_read(indexed_addr);
             uint8_t result = operand - 1;
-            memory_.at((zero_page_addr + registers_.x) % 256) = result;
-            set_flag(FlagKind::Z, result == 0);
-            set_flag(FlagKind::N, (result & 0x80));
+
+            cpu_write(indexed_addr, result);
+            set_zn_flags(result);
 
             add_cycles(6);
             break;
         }
         // Absolute
         case 0xCE: {
-            uint16_t address = get_absolute_address();
-            uint8_t operand = cpu_read(address);
+            uint16_t addr = get_absolute_address();
+            uint8_t operand = cpu_read(addr);
             uint8_t result = operand - 1;
-            memory_.at(address) = result;
-            set_flag(FlagKind::Z, result == 0);
-            set_flag(FlagKind::N, (result & 0x80));
+
+            cpu_write(addr, result);
+            set_zn_flags(result);
 
             add_cycles(6);
             break;
         }
         // Absolute,X
         case 0xDE: {
-            AddressResult address_result = get_absolute_x_addr();
-            uint8_t operand = cpu_read(address_result.address);
+            AddressResult addr_result = get_absolute_x_addr();
+            uint8_t operand = cpu_read(addr_result.address);
             uint8_t result = operand - 1;
-            memory_.at(address_result.address) = result;
-            set_flag(FlagKind::Z, result == 0);
-            set_flag(FlagKind::N, (result & 0x80));
+
+            cpu_write(addr_result.address, result);
+            set_zn_flags(result);
 
             add_cycles(7);
             break;
@@ -923,8 +926,7 @@ void CPU::execute() {
         case 0xCA: {
             uint8_t result = registers_.x - 1;
             registers_.x = result;
-            set_flag(FlagKind::Z, result == 0);
-            set_flag(FlagKind::N, (result & 0x80));
+            set_zn_flags(result);
 
             add_cycles(2);
             break;
@@ -938,8 +940,7 @@ void CPU::execute() {
         case 0x88: {
             uint8_t result = registers_.y - 1;
             registers_.y = result;
-            set_flag(FlagKind::Z, result == 0);
-            set_flag(FlagKind::N, (result & 0x80));
+            set_zn_flags(result);
 
             add_cycles(2);
             break;
@@ -1063,9 +1064,10 @@ void CPU::execute() {
         // Zero Page,X
         case 0xF6: {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
-            uint8_t address = (zero_page_addr + registers_.x) % 256;
-            uint8_t result = static_cast<uint8_t>(cpu_read(address) + 1);
-            cpu_write(address, result);
+            uint8_t indexed_addr = (zero_page_addr + registers_.x) % 256;
+            uint8_t result = static_cast<uint8_t>(cpu_read(indexed_addr) + 1);
+
+            cpu_write(indexed_addr, result);
             set_zn_flags(result);
 
             add_cycles(6);
@@ -1131,18 +1133,17 @@ void CPU::execute() {
         }
         // Indirect (JMP's own special addressing mode)
         case 0x6C: {
-            uint16_t pointer_addr = get_absolute_address();
-            registers_.ip = pointer_addr;
-            uint8_t low = cpu_read(registers_.ip++);
-            uint8_t high = cpu_read(registers_.ip);
+            uint16_t pointer = get_absolute_address();
+
+            uint8_t low = cpu_read(pointer);
 
             // Replicate the wrap-around hardware bug:
             // When the low byte is 0xFF, the high byte doesn't increment
-            if (low == 0xFF) {
-                registers_.ip = static_cast<uint16_t>(high << 8 | low);
-            } else {
-                registers_.ip = static_cast<uint16_t>(high << 8 | low + 1);
-            }
+            uint16_t high_addr = (pointer & 0xFF00) | static_cast<uint8_t>(pointer + 1);
+
+            uint8_t high = cpu_read(high_addr);
+
+            registers_.ip = (static_cast<uint16_t>(high) << 8) | low;
 
             add_cycles(5);
             break;
@@ -1154,14 +1155,13 @@ void CPU::execute() {
 
         // Absolute
         case 0x20: {
-            uint16_t return_addr = registers_.ip + 2;
+            // It should be PC + 2 but PC already incremented once during opcode read
+            uint16_t return_addr = registers_.ip + 1;
             uint8_t high = static_cast<uint8_t>(return_addr >> 8);
-            uint8_t low = static_cast<uint8_t>(return_addr & 0x0F);
+            uint8_t low = static_cast<uint8_t>(return_addr & 0x00FF);
 
-            cpu_write(0x0100 + registers_.sp, high);
-            registers_.sp--;
-            cpu_write(0x0100 + registers_.sp, low);
-            registers_.sp--;
+            stack_push(high);
+            stack_push(low);
 
             registers_.ip = get_absolute_address();
 
@@ -1367,11 +1367,7 @@ void CPU::execute() {
 
         // Accumulator
         case 0x4A: {
-            uint8_t original_value = registers_.a;
-            set_flag(FlagKind::C, (original_value & 0x01) != 0);
-            uint8_t result = original_value >> 1;
-            registers_.a = result;
-            set_zn_flags(result);
+            registers_.a = shift_right(registers_.a);
 
             add_cycles(2);
             break;
@@ -1379,11 +1375,8 @@ void CPU::execute() {
         // Zero Page
         case 0x46: {
             uint8_t addr = cpu_read(registers_.ip++);
-            uint8_t original_value = cpu_read(addr);
-            set_flag(FlagKind::C, (original_value & 0x01) != 0);
-            uint8_t result = original_value >> 1;
-            memory_.at(addr) = result;
-            set_zn_flags(result);
+            uint8_t result = shift_right(cpu_read(addr));
+            cpu_write(addr, result);
 
             add_cycles(5);
             break;
@@ -1391,35 +1384,27 @@ void CPU::execute() {
         // Zero Page,X
         case 0x56: {
             uint8_t addr = cpu_read(registers_.ip++);
-            uint8_t original_value = cpu_read((addr + registers_.x) % 256);
-            set_flag(FlagKind::C, (original_value & 0x01) != 0);
-            uint8_t result = original_value >> 1;
-            memory_.at(addr) = result;
-            set_zn_flags(result);
+            uint8_t indexed_addr = (addr + registers_.x) % 256;
+            uint8_t result = shift_right(cpu_read(indexed_addr));
+            cpu_write(indexed_addr, result);
 
             add_cycles(6);
             break;
         }
         // Absolute
         case 0x4E: {
-            uint16_t address = get_absolute_address();
-            uint8_t original_value = cpu_read(address);
-            set_flag(FlagKind::C, (original_value & 0x01) != 0);
-            uint8_t result = original_value >> 1;
-            memory_.at(address) = result;
-            set_zn_flags(result);
+            uint16_t addr = get_absolute_address();
+            uint8_t result = shift_right(cpu_read(addr));
+            cpu_write(addr, result);
 
             add_cycles(6);
             break;
         }
         // Absolute,X
         case 0x5E: {
-            AddressResult address_result = get_absolute_x_addr();
-            uint8_t original_value = cpu_read(address_result.address);
-            set_flag(FlagKind::C, (original_value & 0x01) != 0);
-            uint8_t result = original_value >> 1;
-            memory_.at(address_result.address) = result;
-            set_zn_flags(result);
+            AddressResult addr_result = get_absolute_x_addr();
+            uint8_t result = shift_right(cpu_read(addr_result.address));
+            cpu_write(addr_result.address, result);
 
             add_cycles(7);
             break;
@@ -1604,9 +1589,10 @@ void CPU::execute() {
         // Zero Page,X
         case 0x36: {
             uint8_t addr = cpu_read(registers_.ip++);
-            uint8_t result = rotate_left(cpu_read((addr + registers_.x) % 256));
+            uint8_t indexed_addr = (addr + registers_.x) % 256;
+            uint8_t result = rotate_left(cpu_read(indexed_addr));
 
-            cpu_write(addr, result);
+            cpu_write(indexed_addr, result);
 
             add_cycles(6);
             break;
@@ -1656,9 +1642,10 @@ void CPU::execute() {
         // Zero Page,X
         case 0x76: {
             uint8_t addr = cpu_read(registers_.ip++);
-            uint8_t result = rotate_right(cpu_read((addr + registers_.x) % 256));
+            uint8_t indexed_addr = (addr + registers_.x) % 256;
+            uint8_t result = rotate_right(cpu_read(indexed_addr));
 
-            cpu_write(addr, result);
+            cpu_write(indexed_addr, result);
 
             add_cycles(6);
             break;
@@ -1723,8 +1710,8 @@ void CPU::execute() {
 
         // Immediate
         case 0xE9: {
-            uint8_t operand = ~cpu_read(registers_.ip++);
-            add_with_carry(operand);
+            uint8_t operand = cpu_read(registers_.ip++);
+            add_with_carry(static_cast<uint8_t>(~operand));
 
             add_cycles(2);
             break;
@@ -1732,7 +1719,7 @@ void CPU::execute() {
         // Zero Page
         case 0xE5: {
             uint8_t addr = cpu_read(registers_.ip++);
-            add_with_carry(~cpu_read(addr));
+            add_with_carry(static_cast<uint8_t>(~cpu_read(addr)));
 
             add_cycles(3);
             break;
@@ -1740,7 +1727,8 @@ void CPU::execute() {
         // Zero Page,X
         case 0xF5: {
             uint8_t addr = cpu_read(registers_.ip++);
-            add_with_carry(~cpu_read((addr + registers_.x) % 256));
+            uint8_t operand = cpu_read((addr + registers_.x) % 256);
+            add_with_carry(static_cast<uint8_t>(~operand));
 
             add_cycles(4);
             break;
@@ -1748,7 +1736,7 @@ void CPU::execute() {
         // Absolute
         case 0xED: {
             uint16_t addr = get_absolute_address();
-            add_with_carry(~cpu_read(addr));
+            add_with_carry(static_cast<uint8_t>(~cpu_read(addr)));
 
             add_cycles(4);
             break;
@@ -1756,7 +1744,7 @@ void CPU::execute() {
         // Absolute,X
         case 0xFD: {
             AddressResult addr_result = get_absolute_x_addr();
-            add_with_carry(~cpu_read(addr_result.address));
+            add_with_carry(static_cast<uint8_t>(~cpu_read(addr_result.address)));
 
             add_cycles(4);
             if (addr_result.is_page_crossed) {
@@ -1767,7 +1755,7 @@ void CPU::execute() {
         // Absolute,Y
         case 0xF9: {
             AddressResult addr_result = get_absolute_y_addr();
-            add_with_carry(~cpu_read(addr_result.address));
+            add_with_carry(static_cast<uint8_t>(~cpu_read(addr_result.address)));
 
             add_cycles(4);
             if (addr_result.is_page_crossed) {
@@ -1778,7 +1766,7 @@ void CPU::execute() {
         // Indexed Indirect (d,X)
         case 0xE1: {
             AddressResult addr_result = get_indexed_indirect_x_addr();
-            add_with_carry(~cpu_read(addr_result.address));
+            add_with_carry(static_cast<uint8_t>(~cpu_read(addr_result.address)));
 
             add_cycles(6);
             break;
@@ -1786,7 +1774,7 @@ void CPU::execute() {
         // Indirect Indexed (d),Y
         case 0xF1: {
             AddressResult addr_result = get_indirect_indexed_y_addr();
-            add_with_carry(~cpu_read(addr_result.address));
+            add_with_carry(static_cast<uint8_t>(~cpu_read(addr_result.address)));
 
             add_cycles(5);
             if (addr_result.is_page_crossed) {
