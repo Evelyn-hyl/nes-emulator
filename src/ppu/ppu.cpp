@@ -1,4 +1,5 @@
-# include "ppu.hpp"
+#include "ppu.hpp"
+#include "cartridge.hpp"
 
 uint8_t PPU::cpu_read(uint16_t addr) {
     uint8_t result = 0;
@@ -224,11 +225,11 @@ void PPU::clock() {
 
             if (cycle_ == 256) {
                 // Simplified Sprite Evaluation (Cycles 65-256)
-                evaluate_sprites();  
+                evaluate_sprites();
                 increment_y();
             }
         }
-        
+
         if (cycle_ >= 257 && cycle_ <= 320 && is_renderering_enabled) {
             if (cycle_ == 257) {
                 v_.reg = t_.reg;
@@ -329,12 +330,12 @@ void PPU::evaluate_sprites() {
 
         if (scanline_ >= y && y <= (scanline_ + sprite_height)) {
             secondary_oam_[sec_oam_index] = y;
-            sec_oam_index ++;
+            sec_oam_index++;
 
             if (sec_oam_index < secondary_oam_.size()) {
                 for (int m = 1; m < 4; m++) {
                     secondary_oam_[sec_oam_index] = oam_[n * 4 + m];
-                    sec_oam_index ++;
+                    sec_oam_index++;
                 }
             } else {
                 // Omits the sprite overflow hardware bug for now
@@ -380,7 +381,7 @@ void PPU::advance_cycle_scanline() {
             return;
         }
     }
-    
+
     cycle_ += 1;
 }
 

@@ -1,8 +1,8 @@
-#ifndef NES_EMULATOR_HPP
-#define NES_EMULATOR_HPP
+#pragma once
 
-#include "./cpu.hpp"
+#include "cpu.hpp"
 #include "ppu.hpp"
+#include "bus.hpp"
 
 class NES {
     public:
@@ -15,7 +15,5 @@ class NES {
     Bus bus_;
     CPU cpu_;
     PPU ppu_;
-    uint64_t global_cpu_cycles_;
+    uint64_t global_cpu_cycles_{};
 };
-
-#endif

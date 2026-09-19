@@ -1,4 +1,4 @@
-#include "../../include/cartridge.hpp"
+#include "cartridge.hpp"
 #include <fstream>
 #include <iostream>
 

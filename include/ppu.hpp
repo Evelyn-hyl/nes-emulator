@@ -1,8 +1,8 @@
 #pragma once
+
 #include <array>
 #include <cstdint>
 #include "types.hpp"
-#include "cartridge.hpp"
 
 class Cartridge;
 
@@ -142,10 +142,10 @@ class PPU {
     };
 
     std::array<SpriteOutputUnit, 8> sprite_render_pipeline_{};
-    
+
     /** Per-Cycle Rendering Pipeline */
-    // In NES hardware, the background and sprite fetch 
-    // share the same 8-cycle Bus, but for the sake of 
+    // In NES hardware, the background and sprite fetch
+    // share the same 8-cycle Bus, but for the sake of
     // separation of concerns, we use two functions
     void step_background_fetch();
     void step_sprite_fetch();

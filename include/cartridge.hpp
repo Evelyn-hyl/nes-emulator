@@ -1,9 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 #include "mapper.hpp"
 #include "types.hpp"
+
 class Cartridge {
     public:
     explicit Cartridge(const std::string& filename);
@@ -11,8 +13,8 @@ class Cartridge {
     bool is_valid() const { return valid_; };
 
     uint8_t get_mapper_id() const { return mapper_id_; };
-    size_t get_prg_size() const { return prg_rom_.size(); };
-    size_t get_chr_size() const { return chr_rom_.size(); };
+    std::size_t get_prg_size() const { return prg_rom_.size(); };
+    std::size_t get_chr_size() const { return chr_rom_.size(); };
     MirrorMode get_mirror_mode() const { return mirror_mode_; };
 
     void set_mirror_mode(MirrorMode mirror_mode) { mirror_mode_ = mirror_mode; };
@@ -34,7 +36,7 @@ class Cartridge {
     bool valid_{};
     uint8_t mapper_id_{};
     MirrorMode mirror_mode_{};
-    Mapper* mapper_;
+    Mapper* mapper_ = nullptr;
     std::vector<uint8_t> prg_rom_;
     std::vector<uint8_t> chr_rom_;
 };

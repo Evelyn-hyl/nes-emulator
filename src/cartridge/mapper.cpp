@@ -1,4 +1,4 @@
-#include "../../include/mapper.hpp"
+#include "mapper.hpp"
 
 MapperZero::MapperZero(uint8_t chr_banks, uint8_t prg_banks) {
     this->chr_banks_ = chr_banks;
