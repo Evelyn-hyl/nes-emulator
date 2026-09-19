@@ -3,8 +3,8 @@
 #include "../../include/ppu.hpp"
 
 void Bus::hook(Cartridge* cartdridge, PPU* ppu, CPU* cpu) {
-    this->cpu_->set_cartdridge(cartdridge);
-    this->ppu_->set_cartdridge(cartdridge);
+    this->cpu_->set_cartridge(cartdridge);
+    this->ppu_->set_cartridge(cartdridge);
 };
 
 uint8_t Bus::cpu_read_ppu(uint16_t addr) {
