@@ -1,12 +1,5 @@
-#include "../../include/cpu.hpp"
-
-// NOTE In the future it can definitely be possible to
-// drop the file size down, as I could probably re use the addressing logic
-// with instruction logic.
-// For example: Zero Page addressing works the same regardless of where its used
-// So we could aim to just re use this core addressing logic, and call it when
-// needed. WARNING NOT RIGHT NOW THOUGH AS I WANT TO FOCUS ON GETTING SOMETHING
-// FUNCTIONAL BEFORE TIDYING THINGS
+#include "cpu.hpp"
+#include "cartridge.hpp"
 
 uint8_t CPU::cpu_read(uint16_t address) const {
     if (address <= 0x1FFF) {
@@ -26,20 +19,12 @@ void CPU::cpu_write(uint16_t address, uint8_t value) {
     // Route other address ranges through the bus/cartridge.
 }
 
-uint8_t CPU::stack_pop() const {
-    if (address < 0x100 or address > 0x01FF) {
-        return 0;
-    }
-
+uint8_t CPU::stack_pop() {
     registers_.sp++;
     return cpu_read(0x0100 + registers_.sp);
 }
 
 void CPU::stack_push(uint8_t value) {
-    if (address < 0x100 or address > 0x01FF) {
-        return;
-    }
-
     cpu_write(0x0100 + registers_.sp, value);
     registers_.sp--;
 
@@ -125,7 +110,7 @@ bool CPU::is_flag_active(FlagKind kind) {
 }
 
 void CPU::add_with_carry(uint16_t operand) {
-    uint8_t result = registers_.a + operand + is_flag_active(FlagKind::C);
+    uint8_t result = static_cast<uint8_t>(registers_.a + operand + is_flag_active(FlagKind::C));
 
     // If it wraps past the max unsigned overflow occurred
     if (result > 0xFF) {
@@ -169,10 +154,10 @@ CPU::AddressResult CPU::get_indexed_indirect_x_addr() {
     uint8_t operand = cpu_read(registers_.ip++);
 
     // Truncate to 8 bits and wrap within zero page
-    uint8_t pointer = static_cast<uint8_t>(operand + registers_.x);
+    uint8_t pointer = (operand + registers_.x) % 256;
 
     uint8_t low = cpu_read(pointer);
-    uint8_t high = cpu_read(static_cast<uint8_t>(pointer + 1));
+    uint8_t high = cpu_read((pointer + 1) % 256);
 
     uint16_t address = (static_cast<uint16_t>(high) << 8) | low;
     return {address, false};
@@ -182,7 +167,7 @@ CPU::AddressResult CPU::get_indirect_indexed_y_addr() {
     uint8_t pointer = cpu_read(registers_.ip++);
 
     uint8_t low = cpu_read(pointer);
-    uint8_t high = cpu_read(static_cast<uint8_t>(pointer + 1));
+    uint8_t high = cpu_read((pointer + 1) % 256);
 
     uint16_t base_address = (static_cast<uint16_t>(high) << 8) | low;
 
@@ -456,10 +441,10 @@ void CPU::execute() {
         }
         // Absolute,X
         case 0x1E: {
-            uint16_t addr = get_absolute_x_addr();
-            uint8_t result = shift_left(cpu_read(addr + registers_.x));
+            AddressResult addr_result = get_absolute_x_addr();
+            uint8_t result = shift_left(cpu_read(addr_result.address + registers_.x));
 
-            cpu_write(addr, result);
+            cpu_write(addr_result.address, result);
 
             add_cycles(7);
             break;
@@ -608,7 +593,7 @@ void CPU::execute() {
             stack_push(sr);
 
             // Jump to interrupt handler code
-            registers_.sp = 0xFFFE;
+            registers_.sp = static_cast<uint8_t>(0xFFFE);
             break;
         }
 
@@ -1078,7 +1063,7 @@ void CPU::execute() {
         // Zero Page,X
         case 0xF6: {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
-            uint8_t address = static_cast<uint8_t>(zero_page_addr + registers_.x);
+            uint8_t address = (zero_page_addr + registers_.x) % 256;
             uint8_t result = static_cast<uint8_t>(cpu_read(address) + 1);
             cpu_write(address, result);
             set_zn_flags(result);
@@ -1154,9 +1139,9 @@ void CPU::execute() {
             // Replicate the wrap-around hardware bug:
             // When the low byte is 0xFF, the high byte doesn't increment
             if (low == 0xFF) {
-                registers_.ip = static_cast<uint16_t>(high_byte << 8 | low_byte);
+                registers_.ip = static_cast<uint16_t>(high << 8 | low);
             } else {
-                registers_.ip = static_cast<uint16_t>(high_byte << 8 | low_byte + 1);
+                registers_.ip = static_cast<uint16_t>(high << 8 | low + 1);
             }
 
             add_cycles(5);
@@ -1861,7 +1846,7 @@ void CPU::execute() {
         // Zero Page,X
         case 0x95: {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
-            uint8_t address = static_cast<uint8_t>(zero_page_addr + registers_.x);
+            uint8_t address = (zero_page_addr + registers_.x) % 256;
             cpu_write(address, registers_.a);
 
             add_cycles(4);
@@ -1923,7 +1908,7 @@ void CPU::execute() {
         // Zero Page,Y
         case 0x96: {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
-            uint8_t address = static_cast<uint8_t>(zero_page_addr + registers_.y);
+            uint8_t address = (zero_page_addr + registers_.y) % 256;
             cpu_write(address, registers_.x);
 
             add_cycles(4);
@@ -1953,7 +1938,7 @@ void CPU::execute() {
         // Zero Page,X
         case 0x94: {
             uint8_t zero_page_addr = cpu_read(registers_.ip++);
-            uint8_t address = static_cast<uint8_t>(zero_page_addr + registers_.x);
+            uint8_t address = (zero_page_addr + registers_.x) % 256;
             cpu_write(address, registers_.y);
 
             add_cycles(4);

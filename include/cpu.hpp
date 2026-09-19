@@ -1,10 +1,10 @@
-#ifndef NES_CPU_HPP
-#define NES_CPU_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
-#include "./bus.hpp"
-#include "./cartridge.hpp"
+
+class Cartridge;
+class Bus;
 
 class CPU {
     enum FlagKind {
@@ -81,7 +81,7 @@ class CPU {
     void cpu_write(uint16_t address, uint8_t value);
 
     // Stack Operations
-    uint8_t stack_pop() const;
+    uint8_t stack_pop();
     void stack_push(uint8_t value);
 
     // Cycle Tracking
@@ -101,5 +101,3 @@ class CPU {
 
     uint64_t cycles_{};
 };
-
-#endif
