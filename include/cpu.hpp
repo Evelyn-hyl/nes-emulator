@@ -32,7 +32,7 @@ class CPU {
     };
 
     public:
-    CPU();
+    CPU() = default;
 
     struct Registers {
         // 16-bit program counter or instruction pointer
@@ -86,7 +86,12 @@ class CPU {
 
     // Cycle Tracking
     uint64_t get_cycles() const { return cycles_; }
+    void set_cycles(uint64_t cycles) { cycles_ = cycles; }
     void add_cycles(uint64_t cycles) { cycles_ += cycles; }
+
+    // Debugging and Test State
+    const Registers& get_registers() const { return registers_; }
+    void set_registers(const Registers& registers) { registers_ = registers; }
 
     // Component Connections
     void set_cartridge(Cartridge* cartdridge) { cartridge_ = cartdridge; }

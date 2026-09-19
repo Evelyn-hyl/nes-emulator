@@ -89,6 +89,19 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+# Headless CPU trace comparison against the standard nestest log.
+add_executable(NES_Nestest
+    tests/nestest/nestest_runner.cpp
+    src/cartridge/cartridge.cpp
+    src/cartridge/mapper.cpp
+    src/cpu/cpu.cpp
+)
+
+target_include_directories(NES_Nestest
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # Suppress only the GNU/Clang extension warning for anonymous structs
     target_compile_options(${PROJECT_NAME} PRIVATE -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
