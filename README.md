@@ -12,19 +12,18 @@ Images / Videos will be added here as development progresses.
 
 An early graphics milestone: decoding cartridge CHR data into tiles and displaying it through SDL2.
 
-<!-- Add the pattern-table demo video here. -->
+<img width="511" height="542" alt="Screenshot 2026-08-18 225929" src="https://github.com/user-attachments/assets/175a34c4-e09a-4847-9400-dc94ae97b885" />
+
 
 ### Background rendering and CPU/PPU integration
 
 Show the current background output, scrolling, and ROM execution. Rendering and timing are still being refined.
 
-<!-- Add the background-rendering / ROM demo video here. Include the ROM name and any known visual issues. -->
+https://github.com/user-attachments/assets/c45caf13-f03a-4afb-a119-e829e14cf93a
 
 ### CPU validation with nestest
 
-Show the headless runner comparing CPU registers and cycle counts against the reference instruction trace.
 
-<!-- Add the nestest demo video here. -->
 
 ## Progress so far
 
