@@ -1,157 +1,150 @@
-# Etalume - NES Emulator (C++/SDL2)
+﻿# Etalume - NES Emulator (C++/SDL2)
 
-A minimal but functional NES emulator built in C++ using SDL2 for windowing/input/rendering.
-Goal: run real NROM (mapper 0) games/test ROMs with correct CPU behavior and a serviceable,
-naively-implemented PPU. Timeline: **2–3 weeks**, 2 contributors.
+Etalume is a work-in-progress NES emulator written in C++20, with SDL2 for windowing and framebuffer display. The current focus is NROM (mapper 0): building a tested CPU core, rendering NES backgrounds, and integrating CPU/PPU timing into a running emulator.
 
-## Scope
+The project now includes all official 6502 opcodes, a headless nestest trace harness, iNES cartridge loading, a per-cycle PPU background pipeline, and an SDL2 frontend. Sprite rendering and controller input are still unfinished, so this is not yet a fully playable emulator.
 
-### In scope (MVP)
-- MOS 6502 CPU core (all official opcodes, correct cycle timing, interrupts: NMI/IRQ/RESET)
-- CPU/PPU/Memory bus, RAM mirroring, iNES ROM loader
-- Mapper 0 (NROM) only
-- Naive PPU: background tile rendering + sprite rendering (8x8 only is fine to start,
-  8x16 as stretch), no scanline-accurate tricks, no mid-frame raster effects required
-- SDL2 frontend: window, framebuffer blit, keyboard-mapped controller input
-- Step/instruction-level debugger (registers, memory viewer, disassembly, breakpoints)
-- Test ROM suite integration (nestest, blargg's CPU/PPU test ROMs)
+## Demos
 
-### Explicitly out of scope
-- APU / audio (no sound at all)
-- Scanline-accurate PPU timing, sprite 0 hit edge cases, sprite overflow flag accuracy
-- Mappers beyond NROM (MMC1/MMC3 etc. are stretch/post-MVP)
-- Save states, rewind, netplay, GUI polish
+Images / Videos will be added here as development progresses.
 
-## Team split
+### CHR pattern-table rendering
 
-Because the CPU and PPU/frontend are both large but fairly separable, each week both
-people touch related-but-distinct pieces rather than working in totally separate silos.
-This keeps integration pain low (you're merging daily, not at the end of a week).
+An early graphics milestone: decoding cartridge CHR data into tiles and displaying it through SDL2.
 
-- **Person A — "CPU/Core"**: 6502 instruction set, bus/memory, interrupts, mapper 0,
-  ROM loading, debugger backend.
-- **Person B — "PPU/Frontend"**: SDL2 shell, PPU registers + rendering, input,
-  framebuffer, debugger UI/visualization.
+<!-- Add the pattern-table demo video here. -->
 
-You will both touch the CPU↔PPU timing glue and the test harness — that's the
-integration seam and it's worth pairing on.
+### Background rendering and CPU/PPU integration
 
----
+Show the current background output, scrolling, and ROM execution. Rendering and timing are still being refined.
 
-## Week 1 — Core skeleton, both halves running in parallel
+<!-- Add the background-rendering / ROM demo video here. Include the ROM name and any known visual issues. -->
 
-**Shared (Day 1, do together):**
-- Repo setup, CMake + SDL2 build working on all your machines
-- Agree on the Bus interface (`read8/write8`, memory map constants, PPU register
-  addresses `$2000-$2007`, mirroring rules) — write this as a header both branch off of
-- Pick and vendor a starting test ROM: `nestest.nes`
+### CPU validation with nestest
 
-**Person A (CPU/Core):**
-- Implement CPU registers, flags, addressing modes
-- Implement official opcodes in groups (loads/stores → arithmetic/logic → branches/jumps
-  → stack/misc) with correct cycle counts
-- Implement RESET vector handling, get CPU running against `nestest.nes` in
-  "no PPU" / headless mode, diff output against the known-good `nestest.log`
+Show the headless runner comparing CPU registers and cycle counts against the reference instruction trace.
 
-**Person B (PPU/Frontend):**
-- SDL2 window + framebuffer (just push a static/test pattern to prove the pipeline)
-- iNES header parser + cartridge/mapper-0 PRG/CHR loading
-- PPU memory map skeleton: pattern tables, nametables, palette RAM, OAM — registers
-  stubbed (reads/writes land somewhere, no rendering logic yet)
-- Keyboard input polling wired to a controller struct (not yet connected to CPU reads)
+<!-- Add the nestest demo video here. -->
 
-**End of week 1 checkpoint:** CPU passes nestest (or you know exactly which opcodes are
-still wrong via log diff), and an SDL2 window opens and can draw an arbitrary framebuffer.
+## Progress so far
 
----
+This overview includes committed milestones and the current local integration work. Implemented features are not a claim of full hardware accuracy or broad game compatibility.
 
-## Week 2 — Make it render, wire it together
+| Area | Progress |
+| --- | --- |
+| CPU | All official 6502 opcodes and addressing modes implemented, including arithmetic, logic, branches, stack operations, jumps, and instruction cycle accounting. Reset-vector handling is present. |
+| CPU validation | Headless nestest comparison harness added; the official instruction trace pass is recorded in commit `6954626`. Fixes include ADC/SBC flags, indexed read-modify-write addressing, shifts, indirect JMP wrapping, and JSR return addresses. |
+| Cartridge / mapper | iNES loading, mapper 0 PRG-ROM mapping for 16 KB and 32 KB cartridges, CHR-ROM reads, and CHR-RAM writes. |
+| Bus | CPU/cartridge/PPU connections, 2 KB CPU RAM and its mirrors, mirrored PPU registers, and PRG-ROM reads. Local integration work expands the address routing and initialization. |
+| PPU registers / memory | Register reads and writes, buffered PPUDATA reads, open-bus behavior, scroll/address latches, horizontal/vertical nametable mirroring, palette RAM, and OAM register access. |
+| Background graphics | CHR pattern-table visualization, nametable/attribute/pattern fetches, background shift registers, palette lookup, scroll updates, and a 256 x 240 framebuffer. |
+| PPU timing | Per-cycle clocking, scanline/frame progression, VBlank set/clear behavior, and odd-frame handling. Timing accuracy is still being refined. |
+| SDL2 frontend | Window and streaming texture display at 4x scale, close-window event handling, and a frame limiter targeting approximately 60.1 FPS. |
+| Integration / diagnostics | Current local work connects ROM execution to the frame loop at three PPU clocks per elapsed CPU cycle, adds VBlank NMI delivery at instruction boundaries, and provides optional CPU/PPU tracing. |
+| Build / tooling | CMake targets for the emulator and nestest runner, SDL2 discovery with a FetchContent fallback, shared types/header cleanup, and clang-format configuration with a tracked pre-commit hook. |
 
-**Person A (CPU/Core):**
-- Finish any remaining opcodes/edge cases from nestest diff
-- Implement NMI (triggered by PPU vblank) and IRQ handling
-- Implement CPU-side `$4014` OAM DMA
-- Start the debugger backend: expose register state, step-one-instruction,
-  breakpoint list, memory read for a given address range
+## Contributors
 
-**Person B (PPU/Frontend):**
-- Implement background rendering: nametable → pattern table → palette lookup →
-  framebuffer, scroll registers (`$2005`/`$2006`) at a basic (per-frame, not per-scanline)
-  granularity
-- Implement sprite rendering from OAM (naive: no sprite 0 hit, no 8-sprite-per-line limit
-  needed for MVP, but easy to add if time allows)
-- Wire controller reads to `$4016`/`$4017`
-- Basic PPU register behavior: vblank flag set/clear, `$2002` read side effects
+Contributions below are based on the repository's commit history. Both contributors have worked on the core; the original CPU/PPU split has evolved as integration progressed.
 
-**Shared (end of week, pair session):**
-- Connect CPU and PPU on a shared clock (simplest correct approach: run PPU 3 ticks per
-  1 CPU cycle, catch up PPU before any CPU read/write that touches PPU state)
-- Get a real, simple game or test ROM showing a stable image
+| Contributor | Work completed |
+| --- | --- |
+| **Evelyn-hyl** | PPU register and memory behavior; scroll/address handling and mirroring; CHR visualization and background rendering pipeline; per-cycle PPU and VBlank timing; iNES cartridge loader and CHR-RAM fixes; SDL2 render loop and frame limiter; completion of official CPU opcode coverage and CPU correctness fixes; nestest harness and official-trace pass; CMake, formatting hooks, shared-header cleanup, and integration fixes. |
+| **NM711** | Initial project structure; CPU status helpers and ADC implementation; CMP, CPX, CPY, DEC, DEX, DEY, EOR, BIT, branch, and AND instructions with their addressing modes; initial bus skeleton and CPU/PPU communication; mapper 0 implementation. |
 
-**End of week 2 checkpoint:** A real ROM boots and renders something recognizable on
-screen with input working.
+Uncommitted integration and tracing changes are included in the progress overview but are not assigned to an author from Git history.
 
----
+## Remaining work
 
-## Week 3 — Debugger, test suite, bug fixing buffer
+- **Sprites:** finish evaluation, pattern fetching, and composition with backgrounds; implement sprite-zero hit and overflow behavior. OAM storage and pipeline scaffolding exist, but sprites are not rendered yet.
+- **OAM DMA:** route `$4014` transfers and account for CPU stalls.
+- **Controller input:** implement keyboard mapping and controller reads/writes at `$4016` / `$4017`.
+- **Timing and interrupts:** refine CPU/PPU synchronization and NMI behavior, add IRQ handling, and validate timing edge cases. The current loop advances the PPU after each CPU instruction or interrupt.
+- **Testing:** expand beyond the official nestest trace to CPU/PPU test ROMs and documented game compatibility checks. Unofficial opcodes are not covered by the default harness run.
+- **Debugger:** add interactive stepping, breakpoints, register/disassembly views, and memory/PPU inspectors. Trace logging is the current diagnostic tool.
 
-**Person A (CPU/Core):**
-- Finish debugger backend: breakpoints on PC/address access, step-over, step-into
-- Run blargg's CPU test ROMs, fix any remaining CPU accuracy bugs
-- Write a small automated test harness (script that runs test ROMs headless and checks
-  known success bytes/output, so you're not eyeballing every regression)
+Audio/APU emulation, additional mappers, save states, rewind, and netplay remain outside the initial MVP scope.
 
-**Person B (PPU/Frontend):**
-- Debugger UI: register/flag display, disassembly view, memory hex viewer, pattern
-  table/nametable/palette viewers (extremely useful for catching PPU bugs visually)
-- Run blargg's PPU test ROMs, fix rendering bugs they surface
-- Polish: pause/step/reset controls, FPS cap/vsync so games run at correct speed
+## Build
 
-**Shared (last 2–3 days):**
-- Integration bug bash: play several real ROMs, log/fix crashes and glitches
-- README/usage docs, build instructions, controls
-- Stretch goals if time remains (pick based on what's most broken/interesting):
-  - Second mapper (MMC1)
-  - 8x16 sprites
-  - Save states
-  - Simple APU (square wave only)
+Requirements:
 
-**End of week 3 checkpoint:** MVP demo — a real commercial or homebrew NROM game
-running at correct speed with working input and a usable debugger.
+- A C++20 compiler and CMake 3.16 or newer.
+- SDL2 development libraries, or Git and network access for CMake to fetch SDL2 when no local installation is found.
 
----
+From the repository root:
 
-## Compressing to 2 weeks
+```sh
+cmake -S . -B build
+cmake --build build --config Debug
+```
 
-If you only have 2 weeks, merge Week 1 and Week 2: skip the "headless nestest only"
-milestone and get CPU+PPU integrated by end of week 1 even if buggy, then spend all of
-week 2 on the debugger + blargg test suite + bug fixing. You lose the clean checkpoint
-but the deliverable is the same.
+CMake builds `NES_Emulator` and `NES_Nestest`. It also configures the repository's tracked Git hooks when possible; the pre-commit hook uses clang-format.
 
-## Test ROM suite
+## Run
 
-- `nestest.nes` — CPU correctness (has a well-known expected log to diff against)
-- blargg's `cpu_dummy_reads`, `instr_test-v5`, `nmi_sync`, `ppu_vbl_nmi`,
-  `sprite_hit_tests`, `oam_read`/`oam_stress` — pull the ones relevant to your scope
-- 1–2 real early NROM games (e.g. *Donkey Kong*, *Balloon Fight*, *Ice Climber*) as
-  end-to-end smoke tests
+Supply a mapper 0 ROM in iNES format. ROMs are not bundled.
 
-## Build Requirements
+For a Windows multi-configuration build:
 
-Requires SDL2 development libraries installed (`libsdl2-dev` on Debian/Ubuntu,
-`sdl2` via Homebrew on macOS, or vcpkg/SDL2 dev package on Windows).
+```powershell
+.\build\Debug\NES_Emulator.exe "path\to\game.nes"
+```
 
-## References
+For a single-configuration build (for example, Makefiles or Ninja):
 
-- NESdev Wiki — https://www.nesdev.org/wiki/Nesdev_Wiki (the single best resource for
-  CPU opcode tables, PPU register behavior, and the iNES format)
-- `nestest.nes` and its reference log (widely mirrored on GitHub)
-- blargg's NES test ROM collections (search "blargg nes tests" on GitHub)
+```sh
+./build/NES_Emulator path/to/game.nes
+```
+
+Without a ROM argument, the application looks for `smb.nes` in the current working directory. Close the window to exit; keyboard gameplay controls are not implemented yet.
+
+The current local integration work also supports tracing:
+
+```powershell
+.\build\Debug\NES_Emulator.exe "path\to\game.nes" --trace
+```
+
+This writes CPU instruction state, PPU register accesses, and NMI/VBlank events to `nes_trace.log` in the working directory, replacing any previous trace.
+
+## CPU testing
+
+Place `nestest.nes` and its reference `nestest.log` in `tests/nestest/artifacts/` (ignored by Git), then run:
+
+```powershell
+cmake --build build --config Debug --target NES_Nestest
+.\tests\nestest\run_nestest.cmd
+```
+
+The Windows helper expects `build/Debug/NES_Nestest.exe`. For other build layouts, invoke the runner directly:
+
+```sh
+./build/NES_Nestest tests/nestest/artifacts/nestest.nes tests/nestest/artifacts/nestest.log
+```
+
+The runner compares `PC`, `A`, `X`, `Y`, `P`, `SP`, and CPU cycle count before each instruction and reports the first mismatch. By default, it checks the official-opcode portion of the trace, retaining the first unofficial entry as a sentinel to verify the final official instruction. It does not validate PPU timing or rendering.
+
+See [the nestest harness documentation](tests/nestest/README.md) for initial CPU state and the optional `--all` mode for future unofficial-opcode testing.
+
+## Code layout
+
+| Path | Purpose |
+| --- | --- |
+| `include/` | CPU, PPU, bus, cartridge, mapper, and timing interfaces and shared types. |
+| `src/cpu/` | CPU instruction execution, state, and cycle accounting. |
+| `src/ppu/` | PPU registers, memory, background rendering, and timing. |
+| `src/bus/` | CPU memory map and component routing. |
+| `src/cartridge/` | iNES loading and mapper implementation. |
+| `src/main.cpp` | Application setup, CPU/PPU execution loop, and SDL2 display. |
+| `src/ui/` | Frame limiter and window-module placeholder. |
+| `src/input/` | Controller-module placeholder. |
+| `tests/nestest/` | Headless CPU trace runner and Windows launch script. |
 
 ## Commit format
 
-`<type>(<scope>): <summary>` — types: `feat`, `fix`, `refactor`, `perf`, `test`,
-`docs`, `build`, `chore`. Scopes: `cpu`, `ppu`, `apu`, `disassembler`, `mapper`,
-`nes`, `util`, `build`.
+`<type>(<scope>): <summary>`
+
+Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `chore`.
+Scopes: `cpu`, `ppu`, `apu`, `disassembler`, `mapper`, `nes`, `util`, `build`.
 
 Example: `feat(cpu): implement ADC/SBC with overflow flag handling`
